@@ -31,7 +31,7 @@
 对于GNN的模型，需要先cd到gnn目录，然后运行：
 
 ```bash
-python model_train.py --data_path path/to/processed_data --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU -1 --out_path ./
+python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./
 ```
 
 *注意*：请把--data_path的路径替换成用Jupyter Notebook文件处理后数据所在的位置路径。其余的参数，请参考model_train.py里面的入参说明修改。

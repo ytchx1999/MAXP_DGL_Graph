@@ -281,27 +281,6 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                                                                             step,
                                                                                             np.mean(val_loss_list),
                                                                                             val_batch_pred.detach()))
-
-        test_loss_list = []
-        test_acc_list = []
-        model.eval()
-        for step, (input_nodes, seeds, blocks) in enumerate(test_dataloader):
-            # forward
-            batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
-            blocks = [block.to(device_id) for block in blocks]
-            # metric and loss
-            test_batch_logits = model(blocks, batch_inputs)
-            test_loss = loss_fn(test_batch_logits, batch_labels)
-
-            # val_loss_list.append(val_loss.detach().cpu().numpy())
-            # val_batch_pred = th.sum(th.argmax(val_batch_logits, dim=1) == batch_labels) / th.tensor(batch_labels.shape[0])
-
-            # if step % 10 == 0:
-            #     print('In epoch:{:03d}|batch:{:04d}, val_loss:{:4f}, val_acc:{:.4f}'.format(epoch,
-            #                                                                                 step,
-            #                                                                                 np.mean(val_loss_list),
-            #                                                                                 val_batch_pred.detach()))
-
         # put validation results into message queue and aggregate at device 0
         if n_gpus > 1 and message_queue != None:
             message_queue.put(val_loss_list)
@@ -313,6 +292,29 @@ def gpu_train(proc_id, n_gpus, GPUS,
                     del loss
         else:
             print(val_loss_list)
+
+    # test
+    test_loss_list = []
+    test_acc_list = []
+    model.eval()
+    for step, (input_nodes, seeds, blocks) in enumerate(test_dataloader):
+        # forward
+        batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
+        blocks = [block.to(device_id) for block in blocks]
+        # metric and loss
+        test_batch_logits = model(blocks, batch_inputs)
+        # test_loss = loss_fn(test_batch_logits, batch_labels)
+
+        test_pred = th.argmax(test_batch_logits, dim=1)
+
+        # val_loss_list.append(val_loss.detach().cpu().numpy())
+        # val_batch_pred = th.sum(th.argmax(val_batch_logits, dim=1) == batch_labels) / th.tensor(batch_labels.shape[0])
+
+        # if step % 10 == 0:
+        #     print('In epoch:{:03d}|batch:{:04d}, val_loss:{:4f}, val_acc:{:.4f}'.format(epoch,
+        #                                                                                 step,
+        #                                                                                 np.mean(val_loss_list),
+        #                                                                                 val_batch_pred.detach()))
 
     # -------------------------5. Collect stats ------------------------------------#
     # best_preds = earlystoper.val_preds

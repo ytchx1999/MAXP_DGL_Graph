@@ -47,3 +47,44 @@ python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 
 ```bash
 --GPU 0 1 2 3
 ```
+
+## 如何调试
+进入gnn目录，配置`launch.json`，如下面所示（解析参数），点击开始调试。
+```json
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: 当前文件",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${fileDirname}",
+            "justMyCode": false,
+            // python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./
+            "args": [
+                "--data_path",
+                "../dataset",
+                "--gnn_model",
+                "graphsage",
+                "--hidden_dim",
+                "64",
+                "--n_layers",
+                "2",
+                "--fanout",
+                "20,20",
+                "--batch_size",
+                "4096",
+                "--GPU",
+                "1",
+                "--out_path",
+                "./"
+            ]
+        }
+    ]
+}
+```

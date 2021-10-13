@@ -33,7 +33,7 @@
 ```bash
 cd gnn/
 python csv_idx_map.py
-python model_train.py
+python model_train.py --GPU 1
 
 # or
 python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./

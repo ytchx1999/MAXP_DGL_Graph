@@ -23,6 +23,8 @@ from dgl.dataloading.pytorch import NodeDataLoader
 from models import GraphSageModel, GraphConvModel, GraphAttnModel
 from utils import load_dgl_graph, time_diff
 from model_utils import early_stopper, thread_wrapped_func
+import pickle
+import pandas as pd
 
 
 def load_subtensor(node_feats, labels, seeds, input_nodes, device):
@@ -294,6 +296,9 @@ def gpu_train(proc_id, n_gpus, GPUS,
             print(val_loss_list)
 
     # test
+    with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
+        test_id_dict = pickle.load(f)
+    submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
     test_loss_list = []
     test_acc_list = []
     model.eval()

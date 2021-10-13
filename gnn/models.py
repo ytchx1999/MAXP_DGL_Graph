@@ -1,4 +1,4 @@
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 
 # Author:james Zhang
 
@@ -9,6 +9,35 @@
 import torch.nn as thnn
 import torch.nn.functional as F
 import dgl.nn as dglnn
+import torch.nn as nn
+import torch
+
+
+class MLP(nn.Module):
+    def __init__(self,
+                 input_dim,
+                 hidden_dim,
+                 embed_dim,
+                 num_layers: int,
+                 act: str = 'ReLU',
+                 bn: bool = False,
+                 end_up_with_fc=False,
+                 bias=True):
+        super(MLP, self).__init__()
+        self.module_list = []
+        for i in range(num_layers):
+            d_in = input_dim if i == 0 else hidden_dim
+            d_out = embed_dim if i == num_layers - 1 else hidden_dim
+            self.module_list.append(nn.Linear(d_in, d_out, bias=bias))
+            if end_up_with_fc:
+                continue
+            if bn:
+                self.module_list.append(nn.BatchNorm1d(d_out))
+            self.module_list.append(getattr(nn, act)(True))
+        self.module_list = nn.Sequential(*self.module_list)
+
+    def forward(self, x):
+        return self.module_list(x)
 
 
 class GraphSageModel(thnn.Module):
@@ -29,32 +58,67 @@ class GraphSageModel(thnn.Module):
         self.dropout = thnn.Dropout(dropout)
 
         self.layers = thnn.ModuleList()
+        self.bns = thnn.ModuleList()
+        self.res_linears = nn.ModuleList()
 
         # build multiple layers
         self.layers.append(dglnn.SAGEConv(in_feats=self.in_feats,
                                           out_feats=self.hidden_dim,
                                           aggregator_type='mean'))
-                                          # aggregator_type = 'pool'))
+        # aggregator_type = 'pool'))
+        self.bns.append(thnn.BatchNorm1d(self.hidden_dim))
+        self.res_linears.append(torch.nn.Linear(in_feats, hidden_dim))
         for l in range(1, (self.n_layers - 1)):
             self.layers.append(dglnn.SAGEConv(in_feats=self.hidden_dim,
                                               out_feats=self.hidden_dim,
                                               aggregator_type='mean'))
-                                              # aggregator_type='pool'))
+            # aggregator_type='pool'))
+            self.bns.append(thnn.BatchNorm1d(self.hidden_dim))
+            self.res_linears.append(torch.nn.Identity())
         self.layers.append(dglnn.SAGEConv(in_feats=self.hidden_dim,
-                                          out_feats=self.n_classes,
+                                          out_feats=self.hidden_dim,
                                           aggregator_type='mean'))
-                                          # aggregator_type = 'pool'))
+        self.bns.append(thnn.BatchNorm1d(self.hidden_dim))
+        self.res_linears.append(torch.nn.Identity())
+        # aggregator_type = 'pool'))
+
+        self.mlp = MLP(in_feats + hidden_dim * n_layers, 2 * n_classes, n_classes, num_layers=2, bn=True,
+                       end_up_with_fc=True, act='LeakyReLU')
+
+    # def forward(self, blocks):
+    #     collect = []
+    #     h = blocks[0].srcdata['feat']
+    #     h = self.dropout(h)
+    #     num_output_nodes = blocks[-1].num_dst_nodes()
+    #     collect.append(h[:num_output_nodes])
+    #     for l, (layer, block) in enumerate(zip(self.layers, blocks)):
+    #         h_res = h[:block.num_dst_nodes()]
+    #         h = layer(block, h)
+    #         h = self.bns[l](h)
+    #         h = self.activation(h)
+    #         h = self.dropout(h)
+    #         collect.append(h[:num_output_nodes])
+    #         h += self.res_linears[l](h_res)
+    #     return self.mlp(torch.cat(collect, -1))
 
     def forward(self, blocks, features):
         h = features
+        h = F.dropout(h, p=0.1, training=self.training)
+        collect = []
+        num_output_nodes = blocks[-1].num_dst_nodes()
+        collect.append(h[:num_output_nodes])
 
         for l, (layer, block) in enumerate(zip(self.layers, blocks)):
+            h_res = h[:block.num_dst_nodes()]
             h = layer(block, h)
-            if l != len(self.layers) - 1:
-                h = self.activation(h)
-                h = self.dropout(h)
+            h = self.bns[l](h)
+            h = self.activation(h)
+            h = self.dropout(h)
 
-        return h
+            collect.append(h[:num_output_nodes])
+            h += self.res_linears[l](h_res)
+
+        return self.mlp(torch.cat(collect, -1))
 
 
 class GraphConvModel(thnn.Module):
@@ -82,7 +146,7 @@ class GraphConvModel(thnn.Module):
         self.layers.append(dglnn.GraphConv(in_feats=self.in_feats,
                                            out_feats=self.hidden_dim,
                                            norm=self.norm,
-                                           activation=self.activation,))
+                                           activation=self.activation, ))
         for l in range(1, (self.n_layers - 1)):
             self.layers.append(dglnn.GraphConv(in_feats=self.hidden_dim,
                                                out_feats=self.hidden_dim,
@@ -158,7 +222,6 @@ class GraphAttnModel(thnn.Module):
         for l in range(self.n_layers - 1):
             h = self.layers[l](blocks[l], h).flatten(1)
 
-        logits = self.layers[-1](blocks[-1],h).mean(1)
+        logits = self.layers[-1](blocks[-1], h).mean(1)
 
         return logits
-

@@ -301,12 +301,14 @@ def gpu_train(proc_id, n_gpus, GPUS,
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
         test_id_dict = pickle.load(f)
     submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
+    with open(os.path.join('../dataset/csv_idx_map.pkl'), 'rb') as f:
+        idx_map = pickle.load(f)
 
-    test_loss_list = []
-    test_acc_list = []
+    test_seeds_list = []
+    test_pred_list = []
     model.eval()
     for step, (input_nodes, seeds, blocks) in enumerate(test_dataloader):
-        print('test_batch:', step)
+        # print('test_batch:', step)
         # forward
         batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
         blocks = [block.to(device_id) for block in blocks]
@@ -316,13 +318,22 @@ def gpu_train(proc_id, n_gpus, GPUS,
 
         test_pred = th.argmax(test_batch_logits, dim=1)
 
-        for i, id in tqdm(enumerate(seeds)):
-            paper_id = test_id_dict[id.item()]
-            label = chr(int(test_pred[i].item() + 65))
+        test_seeds_list.append(seeds)
+        test_pred_list.append(test_pred)
 
-            csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
-            submit['label'][csv_index] = label
+        if step % 10 == 0:
+            print('batch:{:04d}'.format(step))
 
+    test_seeds_list = th.cat(test_seeds_list, dim=0)
+    test_pred_list = th.cat(test_pred_list, dim=0)
+
+    for i, id in tqdm(enumerate(test_seeds_list)):
+        paper_id = test_id_dict[id.item()]
+        label = chr(int(test_pred_list[i].item() + 65))
+
+        # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
+        csv_index = idx_map[paper_id]
+        submit['label'][csv_index] = label
     submit.to_csv(os.path.join('../outputs/', f'submit_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
     # -------------------------5. Collect stats ------------------------------------#
@@ -353,17 +364,16 @@ def gpu_train(proc_id, n_gpus, GPUS,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DGL_SamplingTrain')
-    parser.add_argument('--data_path', type=str, help="Path of saved processed data files.")
-    parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'],
-                        required=True, default='graphsage')
-    parser.add_argument('--hidden_dim', type=int, required=True)
+    parser.add_argument('--data_path', type=str, default='../dataset')
+    parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'], default='graphsage')
+    parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--n_layers', type=int, default=2)
-    parser.add_argument("--fanout", type=str, required=True, help="fanout numbers", default='20,20')
-    parser.add_argument('--batch_size', type=int, required=True, default=1)
-    parser.add_argument('--GPU', nargs='+', type=int, required=True)
+    parser.add_argument("--fanout", type=str, default='20,20')
+    parser.add_argument('--batch_size', type=int, default=4096)
+    parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--out_path', type=str, required=True, help="Absolute path for saving model parameters")
+    parser.add_argument('--out_path', type=str, default='./')
     args = parser.parse_args()
 
     # parse arguments

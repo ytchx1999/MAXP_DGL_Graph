@@ -322,18 +322,23 @@ def gpu_train(proc_id, n_gpus, GPUS,
         test_pred_list.append(test_pred)
 
         if step % 10 == 0:
-            print('batch:{:04d}'.format(step))
+            print('test batch:{:04d}'.format(step))
 
     test_seeds_list = th.cat(test_seeds_list, dim=0)
     test_pred_list = th.cat(test_pred_list, dim=0)
 
+    # save results
     for i, id in tqdm(enumerate(test_seeds_list)):
         paper_id = test_id_dict[id.item()]
         label = chr(int(test_pred_list[i].item() + 65))
 
         # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
-        csv_index = idx_map[paper_id]
-        submit['label'][csv_index] = label
+        if paper_id in idx_map:
+            csv_index = idx_map[paper_id]
+            submit['label'][csv_index] = label
+
+    if not os.path.exists('../outputs'):
+        os.makedirs('../outputs', exist_ok=True)
     submit.to_csv(os.path.join('../outputs/', f'submit_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
     # -------------------------5. Collect stats ------------------------------------#
@@ -372,8 +377,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--out_path', type=str, default='./')
+    parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--out_path', type=str, default='../outputs')
     args = parser.parse_args()
 
     # parse arguments

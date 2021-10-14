@@ -191,37 +191,59 @@ class GraphAttnModel(thnn.Module):
         self.activation = activation
 
         self.layers = thnn.ModuleList()
+        self.norms = nn.ModuleList()
 
         # build multiple layers
-        self.layers.append(dglnn.GATConv(in_feats=self.in_feats,
-                                         out_feats=self.hidden_dim,
-                                         num_heads=self.heads[0],
-                                         feat_drop=self.feat_dropout,
-                                         attn_drop=self.attn_dropout,
-                                         activation=self.activation))
+        # self.layers.append(dglnn.GATConv(in_feats=self.in_feats,
+        #                                  out_feats=self.hidden_dim,
+        #                                  num_heads=self.heads[0],
+        #                                  feat_drop=self.feat_dropout,
+        #                                  attn_drop=self.attn_dropout,
+        #                                  activation=self.activation))
 
-        for l in range(1, (self.n_layers - 1)):
+        for l in range(self.n_layers):
+            in_hidden = self.heads[l - 1] * self.hidden_dim if l > 0 else in_feats
+            out_hidden = self.hidden_dim
             # due to multi-head, the in_dim = num_hidden * num_heads
-            self.layers.append(dglnn.GATConv(in_feats=self.hidden_dim * self.heads[l - 1],
-                                             out_feats=self.hidden_dim,
+            self.layers.append(dglnn.GATConv(in_feats=in_hidden,
+                                             out_feats=out_hidden,
                                              num_heads=self.heads[l],
                                              feat_drop=self.feat_dropout,
                                              attn_drop=self.attn_dropout,
                                              activation=self.activation))
+            self.norms.append(nn.BatchNorm1d(self.heads[l] * out_hidden))
 
-        self.layers.append(dglnn.GATConv(in_feats=self.hidden_dim * self.heads[-2],
-                                         out_feats=self.n_classes,
-                                         num_heads=self.heads[-1],
-                                         feat_drop=self.feat_dropout,
-                                         attn_drop=self.attn_dropout,
-                                         activation=None))
+        # self.layers.append(dglnn.GATConv(in_feats=self.hidden_dim * self.heads[-2],
+        #                                  out_feats=self.n_classes,
+        #                                  num_heads=self.heads[-1],
+        #                                  feat_drop=self.feat_dropout,
+        #                                  attn_drop=self.attn_dropout,
+        #                                  activation=None))
+
+        self.pred_linear = nn.Linear(self.heads[-1] * self.hidden_dim, self.n_classes)
+
+        self.input_drop = nn.Dropout(p=0.1)
+        self.dropout = nn.Dropout(p=0.5)
 
     def forward(self, blocks, features):
         h = features
+        h = self.input_drop(h)
 
-        for l in range(self.n_layers - 1):
-            h = self.layers[l](blocks[l], h).flatten(1)
+        h_last = None
 
-        logits = self.layers[-1](blocks[-1], h).mean(1)
+        for l in range(self.n_layers):
+            h = self.layers[l](blocks[l], h).flatten(1, -1)
 
-        return logits
+            if h_last is not None:
+                h += h_last[: h.shape[0], :]
+
+            h_last = h
+
+            h = self.norms[l](h)
+            h = self.activation(h)
+            h = self.dropout(h)
+
+        # logits = self.layers[-1](blocks[-1], h).mean(1)
+        h = self.pred_linear(h)
+
+        return h

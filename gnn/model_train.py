@@ -216,7 +216,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                norm='both', activation=F.relu, dropout=0)
     elif gnn_model == 'graphattn':
         model = GraphAttnModel(in_feat, hidden_dim, n_layers, n_classes,
-                               heads=([5] * n_layers), activation=F.relu, feat_drop=0.1, attn_drop=0.1)
+                               heads=([6] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
     else:
         raise NotImplementedError('So far, only support three algorithms: GraphSage, GraphConv, and GraphAttn')
 
@@ -375,12 +375,12 @@ if __name__ == '__main__':
     parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'], default='graphattn')
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--n_layers', type=int, default=3)
-    parser.add_argument("--fanout", type=str, default='15,10,5')
+    parser.add_argument("--fanout", type=str, default='15,15,10')
     parser.add_argument("--test_fanout", type=str, default='20,15,10')
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=8)
     parser.add_argument('--out_path', type=str, default='../outputs')
     args = parser.parse_args()
 

@@ -155,6 +155,8 @@ def gpu_train(proc_id, n_gpus, GPUS,
     if proc_id == (n_gpus - 1):
         train_nid_per_gpu = train_nid[proc_id * train_div:]
         val_nid_per_gpu = val_nid[proc_id * val_div:]
+        # use valid
+        # train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu), axis=0)
         test_nid_per_gpu = test_nid[proc_id * test_div:]
     # in case of multiple GPUs, split training/validation index to different GPUs
     else:
@@ -216,7 +218,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                norm='both', activation=F.relu, dropout=0)
     elif gnn_model == 'graphattn':
         model = GraphAttnModel(in_feat, hidden_dim, n_layers, n_classes,
-                               heads=([6] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
+                               heads=([5] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
     else:
         raise NotImplementedError('So far, only support three algorithms: GraphSage, GraphConv, and GraphAttn')
 
@@ -268,6 +270,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
 
         # mini-batch for validation
         # best_val_acc = 0
+
         val_loss_list = []
         val_acc_list = []
         model.eval()
@@ -356,17 +359,17 @@ def gpu_train(proc_id, n_gpus, GPUS,
     # plot_p_r_curve(val_y.cpu().numpy(), best_logits[:, 1])
 
     # -------------------------6. Save models --------------------------------------#
-    model_path = os.path.join(output_folder, 'dgl_model-' + '{:06d}'.format(np.random.randint(100000)) + '.pth')
+    # model_path = os.path.join(output_folder, 'dgl_model-' + '{:06d}'.format(np.random.randint(100000)) + '.pth')
 
-    if n_gpus > 1:
-        if proc_id == 0:
-            model_para_dict = model.state_dict()
-            th.save(model_para_dict, model_path)
-            # after trainning, remember to cleanup and release resouces
-            cleanup()
-    else:
-        model_para_dict = model.state_dict()
-        th.save(model_para_dict, model_path)
+    # if n_gpus > 1:
+    #     if proc_id == 0:
+    #         model_para_dict = model.state_dict()
+    #         th.save(model_para_dict, model_path)
+    #         # after trainning, remember to cleanup and release resouces
+    #         cleanup()
+    # else:
+    #     model_para_dict = model.state_dict()
+    #     th.save(model_para_dict, model_path)
 
 
 if __name__ == '__main__':
@@ -375,12 +378,12 @@ if __name__ == '__main__':
     parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'], default='graphattn')
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--n_layers', type=int, default=3)
-    parser.add_argument("--fanout", type=str, default='15,15,10')
+    parser.add_argument("--fanout", type=str, default='15,10,5')
     parser.add_argument("--test_fanout", type=str, default='20,15,10')
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=8)
+    parser.add_argument('--epochs', type=int, default=5)
     parser.add_argument('--out_path', type=str, default='../outputs')
     args = parser.parse_args()
 
@@ -413,6 +416,11 @@ if __name__ == '__main__':
     graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph(BASE_PATH)
     graph = dgl.to_bidirected(graph, copy_ndata=True)
     graph = dgl.add_self_loop(graph)
+
+    # add labels
+    onehot = th.zeros(labels.shape[0], 23)
+    onehot[train_nid, labels[train_nid]] = 1
+    node_feat = th.cat([node_feat, onehot], dim=1)
 
     # call train with CPU, one GPU, or multiple GPUs
     if GPUS[0] < 0:

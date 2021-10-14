@@ -93,3 +93,50 @@ python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 
     ]
 }
 ```
+
+## Tree
+```bash
+.
+├── dataset
+│   ├── csv_idx_map.pkl
+│   ├── diff_nodes.csv
+│   ├── features.npy
+│   ├── graph.bin
+│   ├── IDandLabels.csv
+│   ├── labels.pkl
+│   ├── link_phase1.csv
+│   ├── sample_submission_for_validation.csv
+│   ├── test_id_dict.pkl
+│   ├── train_nodes.csv
+│   └── validation_nodes.csv
+├── gnn
+│   ├── csv_idx_map.py
+│   ├── __init__.py
+│   ├── models.py
+│   ├── model_train.py
+│   ├── model_utils.py
+│   ├── __pycache__
+│   │   ├── models.cpython-37.pyc
+│   │   ├── model_utils.cpython-37.pyc
+│   │   └── utils.cpython-37.pyc
+│   ├── test_chx.py
+│   ├── test.ipynb
+│   └── utils.py
+├── LICENSE
+├── MAXP 2021初赛数据探索和处理-1.ipynb
+├── MAXP 2021初赛数据探索和处理-2.ipynb
+├── MAXP 2021初赛数据探索和处理-3.ipynb
+├── MAXP 2021初赛数据探索和处理-4.ipynb
+├── outputs
+│   ├── dgl_model-023663.pth
+│   ├── dgl_model-030475.pth
+│   ├── dgl_model-050089.pth
+│   ├── dgl_model-052845.pth
+│   ├── dgl_model-059453.pth
+│   ├── submit_2021-10-13.csv
+│   └── submit_2021-10-14.csv
+├── README 2.md
+└── README.md
+
+4 directories, 36 files
+```

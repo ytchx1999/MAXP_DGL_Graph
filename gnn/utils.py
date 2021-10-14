@@ -1,4 +1,4 @@
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 
 """
     Utilities to handel graph data
@@ -20,7 +20,7 @@ def load_dgl_graph(base_path):
     """
     graphs, _ = dgl.load_graphs(os.path.join(base_path, 'graph.bin'))
     graph = graphs[0]
-    print('################ Graph info: ###############')
+    print('################ Graph info: ###############', flush=True)
     print(graph)
 
     with open(os.path.join(base_path, 'labels.pkl'), 'rb') as f:
@@ -30,17 +30,17 @@ def load_dgl_graph(base_path):
     tr_label_idx = label_data['tr_label_idx']
     val_label_idx = label_data['val_label_idx']
     test_label_idx = label_data['test_label_idx']
-    print('################ Label info: ################')
-    print('Total labels (including not labeled): {}'.format(labels.shape[0]))
-    print('               Training label number: {}'.format(tr_label_idx.shape[0]))
-    print('             Validation label number: {}'.format(val_label_idx.shape[0]))
-    print('                   Test label number: {}'.format(test_label_idx.shape[0]))
+    print('################ Label info: ################', flush=True)
+    print('Total labels (including not labeled): {}'.format(labels.shape[0]), flush=True)
+    print('               Training label number: {}'.format(tr_label_idx.shape[0]), flush=True)
+    print('             Validation label number: {}'.format(val_label_idx.shape[0]), flush=True)
+    print('                   Test label number: {}'.format(test_label_idx.shape[0]), flush=True)
 
     # get node features
     features = np.load(os.path.join(base_path, 'features.npy'))
     node_feat = th.from_numpy(features).float()
-    print('################ Feature info: ###############')
-    print('Node\'s feature shape:{}'.format(node_feat.shape))
+    print('################ Feature info: ###############', flush=True)
+    print('Node\'s feature shape:{}'.format(node_feat.shape), flush=True)
 
     return graph, labels, tr_label_idx, val_label_idx, test_label_idx, node_feat
 

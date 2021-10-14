@@ -96,7 +96,7 @@ def cpu_train(graph_data,
                                                      start_t.day,
                                                      start_t.hour,
                                                      start_t.minute,
-                                                     start_t.second))
+                                                     start_t.second), flush=True)
 
     for epoch in range(epochs):
 
@@ -122,7 +122,7 @@ def cpu_train(graph_data,
                                                                                            step,
                                                                                            loss,
                                                                                            pred.detach(),
-                                                                                           h, m, s))
+                                                                                           h, m, s), flush=True)
 
     # 5 save model if need
     #     pass
@@ -135,7 +135,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
               output_folder='./output'):
 
     device_id = GPUS[proc_id]
-    print('Use GPU {} for training ......'.format(device_id))
+    print('Use GPU {} for training ......'.format(device_id), flush=True)
 
     # ------------------- 1. Prepare data and split for multiple GPUs ------------------- #
     start_t = dt.datetime.now()
@@ -143,7 +143,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                                            start_t.day,
                                                            start_t.hour,
                                                            start_t.minute,
-                                                           start_t.second))
+                                                           start_t.second), flush=True)
 
     graph, labels, train_nid, val_nid, test_nid, node_feat = graph_data
 
@@ -192,7 +192,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                      )
     e_t1 = dt.datetime.now()
     h, m, s = time_diff(e_t1, start_t)
-    print('Model built used: {:02d}h {:02d}m {:02}s'.format(h, m, s))
+    print('Model built used: {:02d}h {:02d}m {:02}s'.format(h, m, s), flush=True)
 
     # ------------------- 2. Build model for multiple GPUs ------------------------------ #
     start_t = dt.datetime.now()
@@ -200,7 +200,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                                            start_t.day,
                                                            start_t.hour,
                                                            start_t.minute,
-                                                           start_t.second))
+                                                           start_t.second), flush=True)
 
     if n_gpus > 1:
         dist_init_method = 'tcp://{}:{}'.format('127.0.0.1', '23456')
@@ -230,7 +230,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                                       output_device=device_id)
     e_t1 = dt.datetime.now()
     h, m, s = time_diff(e_t1, start_t)
-    print('Model built used: {:02d}h {:02d}m {:02}s'.format(h, m, s))
+    print('Model built used: {:02d}h {:02d}m {:02}s'.format(h, m, s), flush=True)
 
     # ------------------- 3. Build loss function and optimizer -------------------------- #
     loss_fn = thnn.CrossEntropyLoss().to(device_id)
@@ -239,7 +239,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
     earlystoper = early_stopper(patience=2, verbose=False)
 
     # ------------------- 4. Train model  ----------------------------------------------- #
-    print('Plan to train {} epoches \n'.format(epochs))
+    print('Plan to train {} epoches \n'.format(epochs), flush=True)
 
     for epoch in range(epochs):
 
@@ -266,7 +266,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                 print('In epoch:{:03d}|batch:{:04d}, train_loss:{:4f}, train_acc:{:.4f}'.format(epoch,
                                                                                                 step,
                                                                                                 np.mean(train_loss_list),
-                                                                                                tr_batch_pred.detach()))
+                                                                                                tr_batch_pred.detach()), flush=True)
 
         # mini-batch for validation
         # best_val_acc = 0
@@ -289,7 +289,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                 print('In epoch:{:03d}|batch:{:04d}, val_loss:{:4f}, val_acc:{:.4f}'.format(epoch,
                                                                                             step,
                                                                                             np.mean(val_loss_list),
-                                                                                            val_batch_pred.detach()))
+                                                                                            val_batch_pred.detach()), flush=True)
         # put validation results into message queue and aggregate at device 0
         if n_gpus > 1 and message_queue != None:
             message_queue.put(val_loss_list)
@@ -297,10 +297,10 @@ def gpu_train(proc_id, n_gpus, GPUS,
             if proc_id == 0:
                 for i in range(n_gpus):
                     loss = message_queue.get()
-                    print(loss)
+                    print(loss, flush=True)
                     del loss
         else:
-            print(val_loss_list)
+            print(val_loss_list, flush=True)
 
     # test
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
@@ -327,7 +327,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
         test_pred_list.append(test_pred)
 
         if step % 10 == 0:
-            print('test batch:{:04d}'.format(step))
+            print('test batch:{:04d}'.format(step), flush=True)
 
     test_seeds_list = th.cat(test_seeds_list, dim=0)
     test_pred_list = th.cat(test_pred_list, dim=0)
@@ -383,7 +383,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--out_path', type=str, default='../outputs')
     args = parser.parse_args()
 
@@ -401,16 +401,16 @@ if __name__ == '__main__':
     OUT_PATH = args.out_path
 
     # output arguments for logging
-    print('Data path: {}'.format(BASE_PATH))
-    print('Used algorithm: {}'.format(MODEL_CHOICE))
-    print('Hidden dimensions: {}'.format(HID_DIM))
-    print('number of hidden layers: {}'.format(N_LAYERS))
-    print('Fanout list: {}'.format(FANOUTS))
-    print('Batch size: {}'.format(BATCH_SIZE))
-    print('GPU list: {}'.format(GPUS))
-    print('Number of workers per GPU: {}'.format(WORKERS))
-    print('Max number of epochs: {}'.format(EPOCHS))
-    print('Output path: {}'.format(OUT_PATH))
+    print('Data path: {}'.format(BASE_PATH), flush=True)
+    print('Used algorithm: {}'.format(MODEL_CHOICE), flush=True)
+    print('Hidden dimensions: {}'.format(HID_DIM), flush=True)
+    print('number of hidden layers: {}'.format(N_LAYERS), flush=True)
+    print('Fanout list: {}'.format(FANOUTS), flush=True)
+    print('Batch size: {}'.format(BATCH_SIZE), flush=True)
+    print('GPU list: {}'.format(GPUS), flush=True)
+    print('Number of workers per GPU: {}'.format(WORKERS), flush=True)
+    print('Max number of epochs: {}'.format(EPOCHS), flush=True)
+    print('Output path: {}'.format(OUT_PATH), flush=True)
 
     # Retrieve preprocessed data and add reverse edge and self-loop
     graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph(BASE_PATH)
@@ -420,6 +420,7 @@ if __name__ == '__main__':
     # add labels
     onehot = th.zeros(labels.shape[0], 23)
     onehot[train_nid, labels[train_nid]] = 1
+    # onehot[np.concatenate((train_nid, val_nid), axis=0), labels[np.concatenate((train_nid, val_nid), axis=0)]] = 1
     node_feat = th.cat([node_feat, onehot], dim=1)
 
     # call train with CPU, one GPU, or multiple GPUs

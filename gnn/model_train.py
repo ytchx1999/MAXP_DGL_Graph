@@ -27,6 +27,16 @@ import pickle
 import pandas as pd
 import time
 from tqdm import tqdm
+import math
+
+
+epsilon = 1 - math.log(2)
+
+
+def cross_entropy(x, labels):
+    y = F.cross_entropy(x, labels, reduction="none")
+    y = th.log(epsilon + y) - math.log(epsilon)
+    return th.mean(y)
 
 
 def load_subtensor(node_feats, labels, seeds, input_nodes, device):
@@ -253,7 +263,8 @@ def gpu_train(proc_id, n_gpus, GPUS,
             blocks = [block.to(device_id) for block in blocks]
             # metric and loss
             train_batch_logits = model(blocks, batch_inputs)
-            train_loss = loss_fn(train_batch_logits, batch_labels)
+            # train_loss = loss_fn(train_batch_logits, batch_labels)
+            train_loss = cross_entropy(train_batch_logits, batch_labels)
             # backward
             optimizer.zero_grad()
             train_loss.backward()
@@ -280,7 +291,8 @@ def gpu_train(proc_id, n_gpus, GPUS,
             blocks = [block.to(device_id) for block in blocks]
             # metric and loss
             val_batch_logits = model(blocks, batch_inputs)
-            val_loss = loss_fn(val_batch_logits, batch_labels)
+            # val_loss = loss_fn(val_batch_logits, batch_labels)
+            val_loss = cross_entropy(val_batch_logits, batch_labels)
 
             val_loss_list.append(val_loss.detach().cpu().numpy())
             val_batch_pred = th.sum(th.argmax(val_batch_logits, dim=1) == batch_labels) / th.tensor(batch_labels.shape[0])

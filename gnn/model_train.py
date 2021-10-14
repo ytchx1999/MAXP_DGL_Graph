@@ -130,7 +130,7 @@ def cpu_train(graph_data,
 
 def gpu_train(proc_id, n_gpus, GPUS,
               graph_data, gnn_model,
-              hidden_dim, n_layers, n_classes, fanouts,
+              hidden_dim, n_layers, n_classes, fanouts, test_fanouts,
               batch_size=32, num_workers=4, epochs=100, message_queue=None,
               output_folder='./output'):
 
@@ -163,6 +163,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
         test_nid_per_gpu = test_nid[proc_id * test_div: (proc_id + 1) * test_div]
 
     sampler = MultiLayerNeighborSampler(fanouts)
+    test_sampler = MultiLayerNeighborSampler(test_fanouts)  # test
     train_dataloader = NodeDataLoader(graph,
                                       train_nid_per_gpu,
                                       sampler,
@@ -173,7 +174,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                       )
     val_dataloader = NodeDataLoader(graph,
                                     val_nid_per_gpu,
-                                    sampler,
+                                    test_sampler,
                                     batch_size=batch_size,
                                     shuffle=True,
                                     drop_last=False,
@@ -181,7 +182,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                     )
     test_dataloader = NodeDataLoader(graph,
                                      test_nid_per_gpu,
-                                     sampler,
+                                     test_sampler,
                                      batch_size=batch_size,
                                      shuffle=False,
                                      drop_last=False,
@@ -215,7 +216,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                norm='both', activation=F.relu, dropout=0)
     elif gnn_model == 'graphattn':
         model = GraphAttnModel(in_feat, hidden_dim, n_layers, n_classes,
-                               heads=([5] * n_layers), activation=F.relu, feat_drop=0, attn_drop=0)
+                               heads=([5] * n_layers), activation=F.relu, feat_drop=0.1, attn_drop=0.1)
     else:
         raise NotImplementedError('So far, only support three algorithms: GraphSage, GraphConv, and GraphAttn')
 
@@ -231,7 +232,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
 
     # ------------------- 3. Build loss function and optimizer -------------------------- #
     loss_fn = thnn.CrossEntropyLoss().to(device_id)
-    optimizer = optim.Adam(model.parameters(), lr=0.004, weight_decay=5e-4)
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
 
     earlystoper = early_stopper(patience=2, verbose=False)
 
@@ -266,6 +267,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                                                                                 tr_batch_pred.detach()))
 
         # mini-batch for validation
+        # best_val_acc = 0
         val_loss_list = []
         val_acc_list = []
         model.eval()
@@ -370,14 +372,15 @@ def gpu_train(proc_id, n_gpus, GPUS,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DGL_SamplingTrain')
     parser.add_argument('--data_path', type=str, default='../dataset')
-    parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'], default='graphsage')
+    parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'], default='graphattn')
     parser.add_argument('--hidden_dim', type=int, default=64)
-    parser.add_argument('--n_layers', type=int, default=2)
-    parser.add_argument("--fanout", type=str, default='20,20')
+    parser.add_argument('--n_layers', type=int, default=3)
+    parser.add_argument("--fanout", type=str, default='15,10,5')
+    parser.add_argument("--test_fanout", type=str, default='20,15,10')
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--out_path', type=str, default='../outputs')
     args = parser.parse_args()
 
@@ -387,6 +390,7 @@ if __name__ == '__main__':
     HID_DIM = args.hidden_dim
     N_LAYERS = args.n_layers
     FANOUTS = [int(i) for i in args.fanout.split(',')]
+    TEST_FANOUTS = [int(i) for i in args.test_fanout.split(',')]
     BATCH_SIZE = args.batch_size
     GPUS = args.GPU
     WORKERS = args.num_workers_per_gpu
@@ -431,7 +435,7 @@ if __name__ == '__main__':
             gpu_train(0, n_gpus, GPUS,
                       graph_data=(graph, labels, train_nid, val_nid, test_nid, node_feat),
                       gnn_model=MODEL_CHOICE, hidden_dim=HID_DIM, n_layers=N_LAYERS, n_classes=23,
-                      fanouts=FANOUTS, batch_size=BATCH_SIZE, num_workers=WORKERS, epochs=EPOCHS,
+                      fanouts=FANOUTS, test_fanouts=TEST_FANOUTS, batch_size=BATCH_SIZE, num_workers=WORKERS, epochs=EPOCHS,
                       message_queue=None, output_folder=OUT_PATH)
         else:
             message_queue = mp.Queue()

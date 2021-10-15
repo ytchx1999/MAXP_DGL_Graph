@@ -140,7 +140,7 @@ def cpu_train(graph_data,
 
 def gpu_train(proc_id, n_gpus, GPUS,
               graph_data, gnn_model,
-              hidden_dim, n_layers, n_classes, fanouts, test_fanouts,
+              hidden_dim, n_layers, n_classes, fanouts, test_fanouts, args,
               batch_size=32, num_workers=4, epochs=100, message_queue=None,
               output_folder='./output'):
 
@@ -252,21 +252,38 @@ def gpu_train(proc_id, n_gpus, GPUS,
     print('Plan to train {} epoches \n'.format(epochs), flush=True)
 
     for epoch in range(epochs):
-
         # mini-batch for training
         train_loss_list = []
         # train_acc_list = []
         model.train()
         for step, (input_nodes, seeds, blocks) in enumerate(train_dataloader):
+            optimizer.zero_grad()
             # forward
             batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
             blocks = [block.to(device_id) for block in blocks]
+
+            perturb = th.FloatTensor(*batch_inputs.shape).uniform_(-args.step_size, args.step_size).to(device_id)
+            perturb.requires_grad_()
+            feat_input = batch_inputs + perturb
             # metric and loss
-            train_batch_logits = model(blocks, batch_inputs)
+            train_batch_logits = model(blocks, feat_input)
             # train_loss = loss_fn(train_batch_logits, batch_labels)
             train_loss = cross_entropy(train_batch_logits, batch_labels)
+            train_loss /= args.m
+
+            for _ in range(args.m-1):
+                train_loss.backward()
+                perturb_data = perturb.detach() + args.step_size * th.sign(perturb.grad.detach())
+                perturb.data = perturb_data.data
+                perturb.grad[:] = 0
+
+                feat_input = batch_inputs + perturb
+
+                train_batch_logits = model(blocks, feat_input)
+                train_loss = cross_entropy(train_batch_logits, batch_labels)
+                train_loss /= args.m
             # backward
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
             train_loss.backward()
             optimizer.step()
 
@@ -395,8 +412,10 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=5)
     parser.add_argument('--out_path', type=str, default='../outputs')
+    parser.add_argument('--step-size', type=float, default=1e-3)
+    parser.add_argument('-m', type=int, default=3)
     args = parser.parse_args()
 
     # parse arguments
@@ -456,7 +475,7 @@ if __name__ == '__main__':
             gpu_train(0, n_gpus, GPUS,
                       graph_data=(graph, labels, train_nid, val_nid, test_nid, node_feat),
                       gnn_model=MODEL_CHOICE, hidden_dim=HID_DIM, n_layers=N_LAYERS, n_classes=23,
-                      fanouts=FANOUTS, test_fanouts=TEST_FANOUTS, batch_size=BATCH_SIZE, num_workers=WORKERS, epochs=EPOCHS,
+                      fanouts=FANOUTS, test_fanouts=TEST_FANOUTS, args=args, batch_size=BATCH_SIZE, num_workers=WORKERS, epochs=EPOCHS,
                       message_queue=None, output_folder=OUT_PATH)
         else:
             message_queue = mp.Queue()

@@ -28,6 +28,15 @@
 对于4个Jupyter Notebook文件，请使用Jupyter环境运行，并注意把其中的竞赛数据文件所在的文件夹替换为你自己保存数据文件的文件夹。
 并记录下你处理完成后的数据文件所在的位置，供下面模型训练使用。
 
+对于node2vec
+```bash
+cd node2vec/
+nohup python main.py > ../outputs/node2vec.log 2>&1 &
+tail -f ../outputs/node2vec.log
+```
+结果保存在`../outputs/emb.pt`中
+
+
 对于GNN的模型，需要先cd到gnn目录，然后运行：
 
 ```bash
@@ -115,6 +124,7 @@ python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 
 │   └── validation_nodes.csv
 ├── gnn
 │   ├── csv_idx_map.py
+│   ├── flag.py
 │   ├── __init__.py
 │   ├── models.py
 │   ├── model_train.py
@@ -131,16 +141,22 @@ python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 
 ├── MAXP 2021初赛数据探索和处理-2.ipynb
 ├── MAXP 2021初赛数据探索和处理-3.ipynb
 ├── MAXP 2021初赛数据探索和处理-4.ipynb
+├── node2vec
+│   ├── main.py
+│   ├── model.py
+│   ├── __pycache__
+│   │   ├── model.cpython-37.pyc
+│   │   └── utils.cpython-37.pyc
+│   └── utils.py
 ├── outputs
-│   ├── dgl_model-023663.pth
-│   ├── dgl_model-030475.pth
-│   ├── dgl_model-050089.pth
-│   ├── dgl_model-052845.pth
-│   ├── dgl_model-059453.pth
+│   ├── node2vec.log
 │   ├── submit_2021-10-13.csv
-│   └── submit_2021-10-14.csv
+│   ├── submit_2021-10-14.csv
+│   ├── submit_2021-10-15.csv
+│   ├── train1.log
+│   └── train.log
 ├── README 2.md
 └── README.md
 
-4 directories, 36 files
+6 directories, 41 files
 ```

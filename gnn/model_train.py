@@ -245,6 +245,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
     # ------------------- 3. Build loss function and optimizer -------------------------- #
     loss_fn = thnn.CrossEntropyLoss().to(device_id)
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
+    scheduler = th.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)  # lr adjustment
 
     earlystoper = early_stopper(patience=2, verbose=False)
 
@@ -295,6 +296,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                                                                                 step,
                                                                                                 np.mean(train_loss_list),
                                                                                                 tr_batch_pred.detach()), flush=True)
+        scheduler.step()
 
         # mini-batch for validation
         # best_val_acc = 0
@@ -412,7 +414,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--out_path', type=str, default='../outputs')
     parser.add_argument('--step-size', type=float, default=1e-3)
     parser.add_argument('-m', type=int, default=3)

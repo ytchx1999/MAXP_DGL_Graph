@@ -230,9 +230,9 @@ class GraphAttnModel(thnn.Module):
     def forward(self, blocks, features):
         h = features
         h = self.input_drop(h)
-        collect = []
-        num_output_nodes = blocks[-1].num_dst_nodes()
-        collect.append(h[:num_output_nodes])
+        # collect = []
+        # num_output_nodes = blocks[-1].num_dst_nodes()
+        # collect.append(h[:num_output_nodes])
 
         h_last = None
 
@@ -248,10 +248,10 @@ class GraphAttnModel(thnn.Module):
             h = self.activation(h)
             h = self.dropout(h)
 
-            collect.append(h[:num_output_nodes])
+            # collect.append(h[:num_output_nodes])
 
         # logits = self.layers[-1](blocks[-1], h).mean(1)
-        # h = self.pred_linear(h)
-        h = self.mlp(torch.cat(collect, -1))
+        h = self.pred_linear(h)
+        # h = self.mlp(torch.cat(collect, -1))
 
         return h

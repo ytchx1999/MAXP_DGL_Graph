@@ -221,7 +221,7 @@ class GraphAttnModel(thnn.Module):
         #                                  activation=None))
 
         self.pred_linear = nn.Linear(self.heads[-1] * self.hidden_dim, self.n_classes)
-        self.mlp = MLP(self.heads[-1] * self.hidden_dim, 2 * n_classes, n_classes, num_layers=2, bn=True,
+        self.mlp = MLP(in_feats + self.heads[-1] * self.hidden_dim * n_layers, 2 * n_classes, n_classes, num_layers=2, bn=True,
                        end_up_with_fc=True, act='LeakyReLU')
 
         self.input_drop = nn.Dropout(p=0.1)
@@ -230,6 +230,9 @@ class GraphAttnModel(thnn.Module):
     def forward(self, blocks, features):
         h = features
         h = self.input_drop(h)
+        collect = []
+        num_output_nodes = blocks[-1].num_dst_nodes()
+        collect.append(h[:num_output_nodes])
 
         h_last = None
 
@@ -245,8 +248,10 @@ class GraphAttnModel(thnn.Module):
             h = self.activation(h)
             h = self.dropout(h)
 
+            collect.append(h[:num_output_nodes])
+
         # logits = self.layers[-1](blocks[-1], h).mean(1)
         # h = self.pred_linear(h)
-        h = self.mlp(h)
+        h = self.mlp(torch.cat(collect, -1))
 
         return h

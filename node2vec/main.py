@@ -40,7 +40,7 @@ def train_node2vec(graph, eval_set, args):
 
     trainer.train(epochs=args.epochs, batch_size=args.batch_size, learning_rate=0.01)
     emb = trainer.embedding()
-    torch.save(emb, '../outputs/emb.pt')
+    torch.save(emb, '../dataset/emb.pt')
     print("done", flush=True)
 
 

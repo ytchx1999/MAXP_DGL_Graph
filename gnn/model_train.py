@@ -416,6 +416,7 @@ if __name__ == '__main__':
     parser.add_argument('--out_path', type=str, default='../outputs')
     parser.add_argument('--step-size', type=float, default=1e-3)
     parser.add_argument('-m', type=int, default=3)
+    parser.add_argument('--use_emb', type=bool, default=False)
     args = parser.parse_args()
 
     # parse arguments
@@ -447,6 +448,10 @@ if __name__ == '__main__':
     graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph(BASE_PATH)
     graph = dgl.to_bidirected(graph, copy_ndata=True)
     graph = dgl.add_self_loop(graph)
+
+    if args.use_emb:
+        emb = th.load('../dataset/emb.pt', map_location='cpu')
+        node_feat = th.cat([node_feat, emb], dim=1)
 
     # add labels
     onehot = th.zeros(labels.shape[0], 23)

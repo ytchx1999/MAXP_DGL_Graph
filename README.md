@@ -44,9 +44,12 @@ cd gnn/
 python csv_idx_map.py
 python model_train.py --GPU 1
 # or run in backward
-nohup python3 model_train.py --GPU 1 --use_emb True > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb --use_label --all_train > ../outputs/train1.log 2>&1 &
 # check the result in terminal
 tail -f ../outputs/train1.log
+# ----------
+# pretrain for cs
+nohup python3 model_train.py --GPU 1 --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
 
 # or
 python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./

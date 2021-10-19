@@ -17,7 +17,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 
 import dgl
-from dgl.dataloading.neighbor import MultiLayerNeighborSampler
+from dgl.dataloading.neighbor import MultiLayerNeighborSampler, MultiLayerFullNeighborSampler
 from dgl.dataloading.pytorch import NodeDataLoader
 
 from models import GraphSageModel, GraphConvModel, GraphAttnModel
@@ -166,7 +166,8 @@ def gpu_train(proc_id, n_gpus, GPUS,
         train_nid_per_gpu = train_nid[proc_id * train_div:]
         val_nid_per_gpu = val_nid[proc_id * val_div:]
         # use valid
-        # train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu), axis=0)
+        if args.all_train:
+            train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu), axis=0)
         test_nid_per_gpu = test_nid[proc_id * test_div:]
     # in case of multiple GPUs, split training/validation index to different GPUs
     else:
@@ -176,6 +177,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
 
     sampler = MultiLayerNeighborSampler(fanouts)
     test_sampler = MultiLayerNeighborSampler(test_fanouts)  # test
+    # test_sampler = MultiLayerFullNeighborSampler(len(test_fanouts))
     train_dataloader = NodeDataLoader(graph,
                                       train_nid_per_gpu,
                                       sampler,
@@ -200,6 +202,20 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                      drop_last=False,
                                      num_workers=num_workers,
                                      )
+    if args.all_train:
+        all_nid_per_gpu = np.concatenate((train_nid_per_gpu, test_nid_per_gpu), axis=0)
+        # all_nid_per_gpu = train_nid_per_gpu
+    else:
+        all_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu, test_nid_per_gpu), axis=0)
+    all_sampler = MultiLayerNeighborSampler(test_fanouts)
+    graph_loader = NodeDataLoader(graph,
+                                  all_nid_per_gpu,
+                                  all_sampler,
+                                  batch_size=batch_size,
+                                  shuffle=False,
+                                  drop_last=False,
+                                  num_workers=num_workers,
+                                  )
     e_t1 = dt.datetime.now()
     h, m, s = time_diff(e_t1, start_t)
     print('Model built used: {:02d}h {:02d}m {:02}s'.format(h, m, s), flush=True)
@@ -245,7 +261,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
     # ------------------- 3. Build loss function and optimizer -------------------------- #
     loss_fn = thnn.CrossEntropyLoss().to(device_id)
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
-    scheduler = th.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)  # lr adjustment
+    scheduler = th.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)  # lr adjustment
 
     earlystoper = early_stopper(patience=2, verbose=False)
 
@@ -301,37 +317,39 @@ def gpu_train(proc_id, n_gpus, GPUS,
         # mini-batch for validation
         # best_val_acc = 0
 
-        val_loss_list = []
-        val_acc_list = []
-        model.eval()
-        for step, (input_nodes, seeds, blocks) in enumerate(val_dataloader):
-            # forward
-            batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
-            blocks = [block.to(device_id) for block in blocks]
-            # metric and loss
-            val_batch_logits = model(blocks, batch_inputs)
-            # val_loss = loss_fn(val_batch_logits, batch_labels)
-            val_loss = cross_entropy(val_batch_logits, batch_labels)
+        if not args.all_train:
+            print("Validation...", flush=True)
+            val_loss_list = []
+            val_acc_list = []
+            model.eval()
+            for step, (input_nodes, seeds, blocks) in enumerate(val_dataloader):
+                # forward
+                batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
+                blocks = [block.to(device_id) for block in blocks]
+                # metric and loss
+                val_batch_logits = model(blocks, batch_inputs)
+                # val_loss = loss_fn(val_batch_logits, batch_labels)
+                val_loss = cross_entropy(val_batch_logits, batch_labels)
 
-            val_loss_list.append(val_loss.detach().cpu().numpy())
-            val_batch_pred = th.sum(th.argmax(val_batch_logits, dim=1) == batch_labels) / th.tensor(batch_labels.shape[0])
+                val_loss_list.append(val_loss.detach().cpu().numpy())
+                val_batch_pred = th.sum(th.argmax(val_batch_logits, dim=1) == batch_labels) / th.tensor(batch_labels.shape[0])
 
-            if step % 10 == 0:
-                print('In epoch:{:03d}|batch:{:04d}, val_loss:{:4f}, val_acc:{:.4f}'.format(epoch,
-                                                                                            step,
-                                                                                            np.mean(val_loss_list),
-                                                                                            val_batch_pred.detach()), flush=True)
-        # put validation results into message queue and aggregate at device 0
-        if n_gpus > 1 and message_queue != None:
-            message_queue.put(val_loss_list)
+                if step % 10 == 0:
+                    print('In epoch:{:03d}|batch:{:04d}, val_loss:{:4f}, val_acc:{:.4f}'.format(epoch,
+                                                                                                step,
+                                                                                                np.mean(val_loss_list),
+                                                                                                val_batch_pred.detach()), flush=True)
+            # put validation results into message queue and aggregate at device 0
+            if n_gpus > 1 and message_queue != None:
+                message_queue.put(val_loss_list)
 
-            if proc_id == 0:
-                for i in range(n_gpus):
-                    loss = message_queue.get()
-                    print(loss, flush=True)
-                    del loss
-        else:
-            print(val_loss_list, flush=True)
+                if proc_id == 0:
+                    for i in range(n_gpus):
+                        loss = message_queue.get()
+                        print(loss, flush=True)
+                        del loss
+            else:
+                print(val_loss_list, flush=True)
 
     # test
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
@@ -377,6 +395,36 @@ def gpu_train(proc_id, n_gpus, GPUS,
         os.makedirs('../outputs', exist_ok=True)
     submit.to_csv(os.path.join('../outputs/', f'submit_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
+    # save emb for lp and cs
+    # if args.save_emb:
+    #     print("Saving inference emb...", flush=True)
+    #     model.eval()
+
+    #     collect = []
+    #     node_num = labels.shape[0]
+    #     x_all = th.zeros(node_num, 23).cpu()
+    #     for step, (input_nodes, seeds, blocks) in enumerate(graph_loader):
+    #         # print('test_batch:', step)
+    #         # forward
+    #         batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
+    #         blocks = [block.to(device_id) for block in blocks]
+    #         # metric and loss
+    #         batch_logits = model(blocks, batch_inputs)
+    #         # test_loss = loss_fn(test_batch_logits, batch_labels`)
+    #         xs = batch_logits.cpu().clone()
+    #         idx = seeds.cpu().clone()
+    #         # x_all[idx] += xs
+    #         collect.append(xs)
+
+    #         # test_pred = th.argmax(batch_logits, dim=1)
+
+    #         if step % 10 == 0:
+    #             print('inference batch:{:04d}'.format(step), flush=True)
+
+    #     # x_all = th.cat(xs, dim=0)
+    #     print(x_all.shape, flush=True)
+    #     th.save(x_all, '../dataset/y_soft.pt')
+
     # -------------------------5. Collect stats ------------------------------------#
     # best_preds = earlystoper.val_preds
     # best_logits = earlystoper.val_logits
@@ -390,17 +438,19 @@ def gpu_train(proc_id, n_gpus, GPUS,
     # plot_p_r_curve(val_y.cpu().numpy(), best_logits[:, 1])
 
     # -------------------------6. Save models --------------------------------------#
-    # model_path = os.path.join(output_folder, 'dgl_model-' + '{:06d}'.format(np.random.randint(100000)) + '.pth')
+    model_path = os.path.join(output_folder, 'dgl_model-' + '{:06d}'.format(np.random.randint(100000)) + '.pth')
 
-    # if n_gpus > 1:
-    #     if proc_id == 0:
-    #         model_para_dict = model.state_dict()
-    #         th.save(model_para_dict, model_path)
-    #         # after trainning, remember to cleanup and release resouces
-    #         cleanup()
-    # else:
-    #     model_para_dict = model.state_dict()
-    #     th.save(model_para_dict, model_path)
+    if n_gpus > 1:
+        if proc_id == 0:
+            model_para_dict = model.state_dict()
+            th.save(model_para_dict, model_path)
+            # after trainning, remember to cleanup and release resouces
+            cleanup()
+    else:
+        model_para_dict = model.state_dict()
+        th.save(model_para_dict, model_path)
+
+    print("Done!")
 
 
 if __name__ == '__main__':
@@ -409,16 +459,19 @@ if __name__ == '__main__':
     parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'], default='graphattn')
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--n_layers', type=int, default=3)
-    parser.add_argument("--fanout", type=str, default='15,10,5')
-    parser.add_argument("--test_fanout", type=str, default='20,15,10')
-    parser.add_argument('--batch_size', type=int, default=4096)
+    parser.add_argument("--fanout", type=str, default='20,20,20')
+    parser.add_argument("--test_fanout", type=str, default='20,20,20')
+    parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--GPU', nargs='+', type=int, default=1)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--out_path', type=str, default='../outputs')
     parser.add_argument('--step-size', type=float, default=1e-3)
     parser.add_argument('-m', type=int, default=3)
-    parser.add_argument('--use_emb', type=bool, default=False)
+    parser.add_argument('--all_train', action="store_true")
+    parser.add_argument('--use_label', action="store_true")
+    parser.add_argument('--use_emb', action="store_true")
+    parser.add_argument('--save_emb', action="store_true")
     args = parser.parse_args()
 
     # parse arguments
@@ -452,14 +505,20 @@ if __name__ == '__main__':
     graph = dgl.add_self_loop(graph)
 
     if args.use_emb:
+        print("Use node2vec embedding...", flush=True)
         emb = th.load('../dataset/emb.pt', map_location='cpu')
+        emb.requires_grad = False
         node_feat = th.cat([node_feat, emb], dim=1)
 
     # add labels
-    onehot = th.zeros(labels.shape[0], 23)
-    onehot[train_nid, labels[train_nid]] = 1
-    # onehot[np.concatenate((train_nid, val_nid), axis=0), labels[np.concatenate((train_nid, val_nid), axis=0)]] = 1
-    node_feat = th.cat([node_feat, onehot], dim=1)
+    if args.use_label:
+        print("Use labels...", flush=True)
+        onehot = th.zeros(labels.shape[0], 23)
+        if args.all_train:
+            onehot[np.concatenate((train_nid, val_nid), axis=0), labels[np.concatenate((train_nid, val_nid), axis=0)]] = 1
+        else:
+            onehot[train_nid, labels[train_nid]] = 1
+        node_feat = th.cat([node_feat, onehot], dim=1)
 
     # call train with CPU, one GPU, or multiple GPUs
     if GPUS[0] < 0:

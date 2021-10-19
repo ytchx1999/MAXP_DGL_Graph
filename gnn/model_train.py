@@ -352,78 +352,77 @@ def gpu_train(proc_id, n_gpus, GPUS,
                 print(val_loss_list, flush=True)
 
     # test
-    with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
-        test_id_dict = pickle.load(f)
-    submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
-    with open(os.path.join('../dataset/csv_idx_map.pkl'), 'rb') as f:
-        idx_map = pickle.load(f)
+    if not args.save_emb:
+        with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
+            test_id_dict = pickle.load(f)
+        submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
+        with open(os.path.join('../dataset/csv_idx_map.pkl'), 'rb') as f:
+            idx_map = pickle.load(f)
 
-    test_seeds_list = []
-    test_pred_list = []
-    model.eval()
-    for step, (input_nodes, seeds, blocks) in enumerate(test_dataloader):
-        # print('test_batch:', step)
-        # forward
-        batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
-        blocks = [block.to(device_id) for block in blocks]
-        # metric and loss
-        test_batch_logits = model(blocks, batch_inputs)
-        # test_loss = loss_fn(test_batch_logits, batch_labels`)
+        test_seeds_list = []
+        test_pred_list = []
+        model.eval()
+        for step, (input_nodes, seeds, blocks) in enumerate(test_dataloader):
+            # print('test_batch:', step)
+            # forward
+            batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
+            blocks = [block.to(device_id) for block in blocks]
+            # metric and loss
+            test_batch_logits = model(blocks, batch_inputs)
+            # test_loss = loss_fn(test_batch_logits, batch_labels`)
 
-        test_pred = th.argmax(test_batch_logits, dim=1)
+            test_pred = th.argmax(test_batch_logits, dim=1)
 
-        test_seeds_list.append(seeds)
-        test_pred_list.append(test_pred)
+            test_seeds_list.append(seeds)
+            test_pred_list.append(test_pred)
 
-        if step % 10 == 0:
-            print('test batch:{:04d}'.format(step), flush=True)
+            if step % 10 == 0:
+                print('test batch:{:04d}'.format(step), flush=True)
 
-    test_seeds_list = th.cat(test_seeds_list, dim=0)
-    test_pred_list = th.cat(test_pred_list, dim=0)
+        test_seeds_list = th.cat(test_seeds_list, dim=0)
+        test_pred_list = th.cat(test_pred_list, dim=0)
 
-    # save results
-    for i, id in tqdm(enumerate(test_seeds_list)):
-        paper_id = test_id_dict[id.item()]
-        label = chr(int(test_pred_list[i].item() + 65))
+        # save results
+        for i, id in tqdm(enumerate(test_seeds_list)):
+            paper_id = test_id_dict[id.item()]
+            label = chr(int(test_pred_list[i].item() + 65))
 
-        # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
-        if paper_id in idx_map:
-            csv_index = idx_map[paper_id]
-            submit['label'][csv_index] = label
+            # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
+            if paper_id in idx_map:
+                csv_index = idx_map[paper_id]
+                submit['label'][csv_index] = label
 
-    if not os.path.exists('../outputs'):
-        os.makedirs('../outputs', exist_ok=True)
-    submit.to_csv(os.path.join('../outputs/', f'submit_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+        if not os.path.exists('../outputs'):
+            os.makedirs('../outputs', exist_ok=True)
+        submit.to_csv(os.path.join('../outputs/', f'submit_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
     # save emb for lp and cs
-    # if args.save_emb:
-    #     print("Saving inference emb...", flush=True)
-    #     model.eval()
+    if args.save_emb:
+        print("Saving inference emb...", flush=True)
+        model.eval()
 
-    #     collect = []
-    #     node_num = labels.shape[0]
-    #     x_all = th.zeros(node_num, 23).cpu()
-    #     for step, (input_nodes, seeds, blocks) in enumerate(graph_loader):
-    #         # print('test_batch:', step)
-    #         # forward
-    #         batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
-    #         blocks = [block.to(device_id) for block in blocks]
-    #         # metric and loss
-    #         batch_logits = model(blocks, batch_inputs)
-    #         # test_loss = loss_fn(test_batch_logits, batch_labels`)
-    #         xs = batch_logits.cpu().clone()
-    #         idx = seeds.cpu().clone()
-    #         # x_all[idx] += xs
-    #         collect.append(xs)
+        node_num = labels.shape[0]
+        x_all = th.zeros(node_num, 23).cpu()
+        for step, (input_nodes, seeds, blocks) in enumerate(graph_loader):
+            # print('test_batch:', step)
+            # forward
+            batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
+            blocks = [block.to(device_id) for block in blocks]
+            # metric and loss
+            batch_logits = model(blocks, batch_inputs)
+            # test_loss = loss_fn(test_batch_logits, batch_labels`)
+            xs = batch_logits.detach().data.cpu()
+            x_all[seeds] += xs
+            # collect.append(xs)
 
-    #         # test_pred = th.argmax(batch_logits, dim=1)
+            # test_pred = th.argmax(batch_logits, dim=1)
 
-    #         if step % 10 == 0:
-    #             print('inference batch:{:04d}'.format(step), flush=True)
+            if step % 10 == 0:
+                print('inference batch:{:04d}'.format(step), flush=True)
 
-    #     # x_all = th.cat(xs, dim=0)
-    #     print(x_all.shape, flush=True)
-    #     th.save(x_all, '../dataset/y_soft.pt')
+        # x_all = th.cat(xs, dim=0)
+        print(x_all.shape, flush=True)
+        th.save(x_all, '../dataset/y_soft.pt')
 
     # -------------------------5. Collect stats ------------------------------------#
     # best_preds = earlystoper.val_preds
@@ -438,17 +437,17 @@ def gpu_train(proc_id, n_gpus, GPUS,
     # plot_p_r_curve(val_y.cpu().numpy(), best_logits[:, 1])
 
     # -------------------------6. Save models --------------------------------------#
-    model_path = os.path.join(output_folder, 'dgl_model-' + '{:06d}'.format(np.random.randint(100000)) + '.pth')
+    # model_path = os.path.join(output_folder, 'dgl_model-' + '{:06d}'.format(np.random.randint(100000)) + '.pth')
 
-    if n_gpus > 1:
-        if proc_id == 0:
-            model_para_dict = model.state_dict()
-            th.save(model_para_dict, model_path)
-            # after trainning, remember to cleanup and release resouces
-            cleanup()
-    else:
-        model_para_dict = model.state_dict()
-        th.save(model_para_dict, model_path)
+    # if n_gpus > 1:
+    #     if proc_id == 0:
+    #         model_para_dict = model.state_dict()
+    #         th.save(model_para_dict, model_path)
+    #         # after trainning, remember to cleanup and release resouces
+    #         cleanup()
+    # else:
+    #     model_para_dict = model.state_dict()
+    #     th.save(model_para_dict, model_path)
 
     print("Done!")
 

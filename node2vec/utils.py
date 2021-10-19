@@ -72,7 +72,7 @@ def parse_arguments():
     parser.add_argument('--q', type=float, default=4)  # 4
     parser.add_argument('--num_walks', type=int, default=10)
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--batch_size', type=int, default=256)
 
     args = parser.parse_args()
 

@@ -34,7 +34,7 @@ cd node2vec/
 nohup python main.py > ../outputs/node2vec.log 2>&1 &
 tail -f ../outputs/node2vec.log
 ```
-结果保存在`../outputs/emb.pt`中
+结果保存在`../dataset/emb.pt`中
 
 
 对于GNN的模型，需要先cd到gnn目录，然后运行：
@@ -44,12 +44,12 @@ cd gnn/
 python csv_idx_map.py
 python model_train.py --GPU 1
 # or run in backward
-nohup python model_train.py --GPU 1 > ../outputs/train.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb True > ../outputs/train.log 2>&1 &
 # check the result in terminal
 tail -f ../outputs/train.log
 
 # or
-python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./
+python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./
 ```
 
 *注意*：请把--data_path的路径替换成用Jupyter Notebook文件处理后数据所在的位置路径。其余的参数，请参考model_train.py里面的入参说明修改。

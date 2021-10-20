@@ -31,68 +31,26 @@ def main():
 
     graph = graph.to(device)
     labels = labels.to(device)
-    train_nid = train_nid.to(device)
-    val_nid = val_nid.to(device)
-    test_nid = test_nid.to(device)
+    train_nid = torch.from_numpy(train_nid).to(device)
+    val_nid = torch.from_numpy(val_nid).to(device)
+    test_nid = torch.from_numpy(test_nid).to(device)
     node_feat = node_feat.to(device)
 
     n_features = node_feat.size()[-1]
     n_classes = 23
-    # n_classes = dataset.num_classes
-
-    # load data
-    # dataset = DglNodePropPredDataset(name=args.dataset)
-    # evaluator = Evaluator(name=args.dataset)
-
-    # split_idx = dataset.get_idx_split()
-    # g, labels = dataset[0]  # graph: DGLGraph object, label: torch tensor of shape (num_nodes, num_tasks)
-
-    # if args.dataset == 'ogbn-arxiv':
-    #     g = dgl.to_bidirected(g, copy_ndata=True)
-
-    #     feat = g.ndata['feat']
-    #     feat = (feat - feat.mean(0)) / feat.std(0)
-    #     g.ndata['feat'] = feat
-
-    # g = g.to(device)
-    # feats = g.ndata['feat']
-    # labels = labels.to(device)
-
-    # # load masks for train / validation / test
-    # train_idx = split_idx["train"].to(device)
-    # valid_idx = split_idx["valid"].to(device)
-    # test_idx = split_idx["test"].to(device)
-
-    # n_features = feats.size()[-1]
-    # n_classes = dataset.num_classes
-
-    # load model
-    # if args.model == 'mlp':
-    #     model = MLP(n_features, args.hid_dim, n_classes, args.num_layers, args.dropout)
-    # elif args.model == 'linear':
-    #     model = MLPLinear(n_features, n_classes)
-    # else:
-    #     raise NotImplementedError(f'Model {args.model} is not supported.')
-
-    # model = model.to(device)
-    # print(f'Model parameters: {sum(p.numel() for p in model.parameters())}')
 
     # if args.pretrain:
-    print('---------- Before ----------')
+    print('---------- Before ----------', flush=True)
     # model.load_state_dict(torch.load(f'base/{args.dataset}-{args.model}.pt'))
     # model.eval()
 
     # y_soft = model(feats).exp()
 
+    # y_soft = torch.rand(labels.shape[0], 23)
     y_soft = torch.load('../dataset/y_soft.pt', map_location='cpu')
-    y_soft = y_soft.exp().to(device)
+    y_soft = y_soft.softmax(dim=-1).to(device)
 
-    y_pred = y_soft.argmax(dim=-1, keepdim=True)
-    # valid_acc = evaluate(y_pred, labels, valid_idx, evaluator)
-    # test_acc = evaluate(y_pred, labels, test_idx, evaluator)
-    # print(f'Valid acc: {valid_acc:.4f} | Test acc: {test_acc:.4f}')
-
-    print('---------- Correct & Smoothing ----------')
+    print('---------- Correct & Smoothing ----------', flush=True)
     cs = CorrectAndSmooth(num_correction_layers=args.num_correction_layers,
                           correction_alpha=args.correction_alpha,
                           correction_adj=args.correction_adj,
@@ -107,10 +65,10 @@ def main():
     y_soft = cs.smooth(graph, y_soft, labels[mask_idx], mask_idx)
     y_pred = y_soft.argmax(dim=-1, keepdim=True)
     val_acc = torch.sum(torch.argmax(y_pred[val_nid], dim=1) == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    # valid_acc = evaluate(y_pred, labels, val_nid, evaluator)
-    # test_acc = evaluate(y_pred, labels, test_idx, evaluator)
-    print(f'Valid acc: {val_acc:.4f}')
 
+    print(f'Valid acc: {val_acc:.4f}', flush=True)
+
+    # test
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
         test_id_dict = pickle.load(f)
     submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
@@ -129,57 +87,9 @@ def main():
 
     if not os.path.exists('../outputs'):
         os.makedirs('../outputs', exist_ok=True)
-    submit.to_csv(os.path.join('../outputs/', f'submit_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+    submit.to_csv(os.path.join('../outputs/', f'submit_cs_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
-    # else:
-    #     opt = optim.Adam(model.parameters(), lr=args.lr)
-
-    #     best_acc = 0
-    #     best_model = copy.deepcopy(model)
-
-    #     # training
-    #     print('---------- Training ----------')
-    #     for i in range(args.epochs):
-
-    #         model.train()
-    #         opt.zero_grad()
-
-    #         logits = model(feats)
-
-    #         train_loss = F.nll_loss(logits[train_idx], labels.squeeze(1)[train_idx])
-    #         train_loss.backward()
-
-    #         opt.step()
-
-    #         model.eval()
-    #         with torch.no_grad():
-    #             logits = model(feats)
-
-    #             y_pred = logits.argmax(dim=-1, keepdim=True)
-
-    #             train_acc = evaluate(y_pred, labels, train_idx, evaluator)
-    #             valid_acc = evaluate(y_pred, labels, valid_idx, evaluator)
-
-    #             print(f'Epoch {i} | Train loss: {train_loss.item():.4f} | Train acc: {train_acc:.4f} | Valid acc {valid_acc:.4f}')
-
-    #             if valid_acc > best_acc:
-    #                 best_acc = valid_acc
-    #                 best_model = copy.deepcopy(model)
-
-    #     # testing & saving model
-    #     print('---------- Testing ----------')
-    #     best_model.eval()
-
-    #     logits = best_model(feats)
-
-    #     y_pred = logits.argmax(dim=-1, keepdim=True)
-    #     test_acc = evaluate(y_pred, labels, test_idx, evaluator)
-    #     print(f'Test acc: {test_acc:.4f}')
-
-    #     if not os.path.exists('base'):
-    #         os.makedirs('base')
-
-    #     torch.save(best_model.state_dict(), f'base/{args.dataset}-{args.model}.pt')
+    print("Done!", flush=True)
 
 
 if __name__ == '__main__':
@@ -189,7 +99,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Base predictor(C&S)')
 
     # Dataset
-    parser.add_argument('--gpu', type=int, default=0, help='-1 for cpu')
+    parser.add_argument('--gpu', type=int, default=2, help='-1 for cpu')
     parser.add_argument('--dataset', type=str, default='ogbn-arxiv', choices=['ogbn-arxiv', 'ogbn-products'])
     # Base predictor
     parser.add_argument('--model', type=str, default='mlp', choices=['mlp', 'linear'])
@@ -213,6 +123,6 @@ if __name__ == '__main__':
     parser.add_argument('--scale', type=float, default=20.)
 
     args = parser.parse_args()
-    print(args)
+    print(args, flush=True)
 
     main()

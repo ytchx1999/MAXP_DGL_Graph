@@ -50,6 +50,8 @@ tail -f ../outputs/train1.log
 # ----------
 # pretrain for cs
 nohup python3 model_train.py --GPU 1 --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
+cd ../correct_and_smooth
+python3 main.py
 
 # or
 python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./

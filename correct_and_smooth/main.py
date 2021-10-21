@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import dgl
-from ogb.nodeproppred import DglNodePropPredDataset, Evaluator
+# from ogb.nodeproppred import DglNodePropPredDataset, Evaluator
 from model import MLP, MLPLinear, CorrectAndSmooth
 from utils import load_dgl_graph, time_diff
 import pandas as pd
@@ -61,10 +61,11 @@ def main():
                           scale=args.scale)
 
     mask_idx = torch.cat([train_nid, val_nid])
+    # mask_idx = train_nid
     y_soft = cs.correct(graph, y_soft, labels[mask_idx], mask_idx)
     y_soft = cs.smooth(graph, y_soft, labels[mask_idx], mask_idx)
-    y_pred = y_soft.argmax(dim=-1, keepdim=True)
-    val_acc = torch.sum(torch.argmax(y_pred[val_nid], dim=1) == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    y_pred = y_soft.argmax(dim=-1)
+    val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
 
     print(f'Valid acc: {val_acc:.4f}', flush=True)
 
@@ -120,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('--smoothing-alpha', type=float, default=0.756)
     parser.add_argument('--smoothing-adj', type=str, default='DAD')
     parser.add_argument('--autoscale', action='store_true')
-    parser.add_argument('--scale', type=float, default=20.)
+    parser.add_argument('--scale', type=float, default=1.)
 
     args = parser.parse_args()
     print(args, flush=True)

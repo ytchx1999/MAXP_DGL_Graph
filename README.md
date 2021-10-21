@@ -1,61 +1,68 @@
 # MAXP_DGL_Graph
-[ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ 队伍: Graph@ICT ]
+[ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: Graph@ICT ]
 
 
 
-# MAXP竞赛——DGL图数据Baseline模型
+## 代码库包括2个部分：
 
-本代码库是为2021 MAXP竞赛的DGL图数据所准备的Baseline模型，供参赛选手参考学习使用DGL来构建GNN模型。
-
-代码库包括2个部分：
----------------
 
 1. 用于数据预处理的4个Jupyter Notebook
 2. 用DGL构建的3个GNN模型(GCN,GraphSage和GAT)，以及训练模型所用的代码和辅助函数。
 
-依赖包：
-------
+## 依赖包：
+
 
 - dgl==0.7.1
 - pytorch==1.7.0
 - pandas
 - numpy
 - datetime
+- pickle
 
-如何运行：
--------
+## 如何运行：
 
+### 运行jupyter进行数据预处理
 对于4个Jupyter Notebook文件，请使用Jupyter环境运行，并注意把其中的竞赛数据文件所在的文件夹替换为你自己保存数据文件的文件夹。
 并记录下你处理完成后的数据文件所在的位置，供下面模型训练使用。
 
-对于node2vec
+### 运行node2vec并保存Embedding
 ```bash
 cd node2vec/
+# run node2vec in backward
 nohup python main.py > ../outputs/node2vec.log 2>&1 &
 tail -f ../outputs/node2vec.log
 ```
-结果保存在`../dataset/emb.pt`中
+结果保存在`../dataset/emb.pt`中。
 
 
+### 运行GNN模型并保存test结果
 对于GNN的模型，需要先cd到gnn目录，然后运行：
 
 ```bash
 cd gnn/
+# generate index map
 python csv_idx_map.py
-python model_train.py --GPU 1
-# or run in backward
+# then run gnn in backward
 nohup python3 model_train.py --GPU 1 --use_emb --use_label --all_train > ../outputs/train1.log 2>&1 &
 # check the result in terminal
 tail -f ../outputs/train1.log
-# ----------
-# pretrain for cs
-nohup python3 model_train.py --GPU 1 --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
-cd ../correct_and_smooth
-python3 main.py --all_train
 
 # or
 python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./
 ```
+test结果保存在`../outputs/submit_xxxx-xx-xx.csv`中。
+
+### 运行和使用C&S方法
+
+```bash
+# pretrain model in backward
+cd gnn/
+nohup python3 model_train.py --GPU 1 --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
+# run c&s
+cd ../correct_and_smooth
+python3 main.py --all_train
+```
+test结果保存在`../outputs/submit_cs_xxxx-xx-xx.csv`中。
 
 *注意*：请把--data_path的路径替换成用Jupyter Notebook文件处理后数据所在的位置路径。其余的参数，请参考model_train.py里面的入参说明修改。
 
@@ -71,9 +78,11 @@ python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim
 --GPU 0 1 2 3
 ```
 
-## 如何调试
+---
+## 其他说明
+### 如何调试
 进入gnn目录，配置`launch.json`，如下面所示（解析参数），点击开始调试。
-```json
+```javascript
 {
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
@@ -105,19 +114,27 @@ python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim
                 "--GPU",
                 "1",
                 "--out_path",
-                "./"
+                "./outputs"
             ]
         }
     ]
 }
 ```
 
-## Tree
-```bash
+### Tree
 .
+├── correct_and_smooth
+│   ├── __init__.py
+│   ├── main.py
+│   ├── model.py
+│   ├── __pycache__
+│   │   ├── model.cpython-37.pyc
+│   │   └── utils.cpython-37.pyc
+│   └── utils.py
 ├── dataset
 │   ├── csv_idx_map.pkl
 │   ├── diff_nodes.csv
+│   ├── emb.pt
 │   ├── features.npy
 │   ├── graph.bin
 │   ├── IDandLabels.csv
@@ -126,7 +143,8 @@ python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim
 │   ├── sample_submission_for_validation.csv
 │   ├── test_id_dict.pkl
 │   ├── train_nodes.csv
-│   └── validation_nodes.csv
+│   ├── validation_nodes.csv
+│   └── y_soft.pt
 ├── gnn
 │   ├── csv_idx_map.py
 │   ├── flag.py
@@ -154,14 +172,21 @@ python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim
 │   │   └── utils.cpython-37.pyc
 │   └── utils.py
 ├── outputs
+│   ├── dgl_model-053714.pth
 │   ├── node2vec.log
 │   ├── submit_2021-10-13.csv
 │   ├── submit_2021-10-14.csv
 │   ├── submit_2021-10-15.csv
+│   ├── submit_2021-10-17.csv
+│   ├── submit_2021-10-18.csv
+│   ├── submit_2021-10-19.csv
+│   ├── submit_2021-10-20.csv
+│   ├── submit_cs_2021-10-20.csv
+│   ├── submit_cs_2021-10-21.csv
 │   ├── train1.log
 │   └── train.log
 ├── README 2.md
 └── README.md
 
-6 directories, 41 files
+8 directories, 56 files
 ```

@@ -122,6 +122,7 @@ test结果保存在`../outputs/submit_cs_xxxx-xx-xx.csv`中。
 ```
 
 ### Tree
+```bash
 .
 ├── correct_and_smooth
 │   ├── __init__.py

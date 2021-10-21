@@ -14,13 +14,6 @@ from tqdm import tqdm
 import time
 
 
-def evaluate(y_pred, y_true, idx, evaluator):
-    return evaluator.eval({
-        'y_true': y_true[idx],
-        'y_pred': y_pred[idx]
-    })['acc']
-
-
 def main():
     graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph('../dataset')
     graph = dgl.to_bidirected(graph, copy_ndata=True)
@@ -50,6 +43,10 @@ def main():
     y_soft = torch.load('../dataset/y_soft.pt', map_location='cpu')
     y_soft = y_soft.softmax(dim=-1).to(device)
 
+    y_pred = y_soft.argmax(dim=-1)
+    val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    print(f'Pre valid acc: {val_acc:.4f}', flush=True)
+
     print('---------- Correct & Smoothing ----------', flush=True)
     cs = CorrectAndSmooth(num_correction_layers=args.num_correction_layers,
                           correction_alpha=args.correction_alpha,
@@ -60,8 +57,10 @@ def main():
                           autoscale=args.autoscale,
                           scale=args.scale)
 
-    mask_idx = torch.cat([train_nid, val_nid])
-    # mask_idx = train_nid
+    if args.all_train:
+        mask_idx = torch.cat([train_nid, val_nid])
+    else:
+        mask_idx = train_nid
     y_soft = cs.correct(graph, y_soft, labels[mask_idx], mask_idx)
     y_soft = cs.smooth(graph, y_soft, labels[mask_idx], mask_idx)
     y_pred = y_soft.argmax(dim=-1)
@@ -115,13 +114,14 @@ if __name__ == '__main__':
     # C & S
     parser.add_argument('--pretrain', action='store_true', help='Whether to perform C & S')
     parser.add_argument('--num-correction-layers', type=int, default=50)
-    parser.add_argument('--correction-alpha', type=float, default=0.979)
+    parser.add_argument('--correction-alpha', type=float, default=0.979)  # 0.979
     parser.add_argument('--correction-adj', type=str, default='DAD')
     parser.add_argument('--num-smoothing-layers', type=int, default=50)
-    parser.add_argument('--smoothing-alpha', type=float, default=0.756)
+    parser.add_argument('--smoothing-alpha', type=float, default=0.756)  # 0.756
     parser.add_argument('--smoothing-adj', type=str, default='DAD')
     parser.add_argument('--autoscale', action='store_true')
-    parser.add_argument('--scale', type=float, default=1.)
+    parser.add_argument('--scale', type=float, default=0.8)
+    parser.add_argument('--all_train', action='store_true')
 
     args = parser.parse_args()
     print(args, flush=True)

@@ -120,7 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('--smoothing-alpha', type=float, default=0.756)  # 0.756
     parser.add_argument('--smoothing-adj', type=str, default='DAD')
     parser.add_argument('--autoscale', action='store_true')
-    parser.add_argument('--scale', type=float, default=0.8)
+    parser.add_argument('--scale', type=float, default=1.)
     parser.add_argument('--all_train', action='store_true')
 
     args = parser.parse_args()

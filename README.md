@@ -11,13 +11,15 @@
 
 ## 依赖包：
 
-
-- dgl==0.7.1
-- pytorch==1.7.0
-- pandas
-- numpy
-- datetime
-- pickle
+```bash
+dgl==0.7.1
+pytorch==1.7.0
+pandas
+numpy
+datetime
+pickle
+tqdm
+```
 
 ## 如何运行：
 

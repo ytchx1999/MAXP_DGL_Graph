@@ -17,8 +17,12 @@ pytorch==1.7.0
 pandas
 numpy
 datetime
-pickle
 tqdm
+```
+
+## 环境安装
+```bash
+pip install -r requirement.txt
 ```
 
 ## 如何运行：
@@ -45,7 +49,7 @@ cd gnn/
 # generate index map
 python csv_idx_map.py
 # then run gnn in backward
-nohup python3 model_train.py --GPU 1 --use_emb --use_label --all_train > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb --use_label --flag --all_train > ../outputs/train1.log 2>&1 &
 # check the result in terminal
 tail -f ../outputs/train1.log
 
@@ -59,7 +63,7 @@ test结果保存在`../outputs/submit_xxxx-xx-xx.csv`中。
 ```bash
 # pretrain model in backward
 cd gnn/
-nohup python3 model_train.py --GPU 1 --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb --save_emb --flag --all_train > ../outputs/train1.log 2>&1 &
 # run c&s
 cd ../correct_and_smooth
 python3 main.py --all_train

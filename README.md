@@ -14,6 +14,7 @@
 ```bash
 dgl==0.7.1
 pytorch==1.7.0
+sklearn
 pandas
 numpy
 datetime

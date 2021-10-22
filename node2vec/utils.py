@@ -1,7 +1,5 @@
 import argparse
 from dgl.data import CitationGraphDataset
-from ogb.nodeproppred import *
-from ogb.linkproppred import *
 
 import os
 import dgl
@@ -51,6 +49,8 @@ def load_graph(name):
     nodes = graph.nodes()
     nodes_train, y_train = nodes[train_nid], labels[train_nid]
     nodes_val, y_val = nodes[val_nid], labels[val_nid]
+    nodes_train = th.cat([nodes_train, nodes_val], dim=0)
+    y_train = th.cat([y_train, y_val], dim=0)
     eval_set = [(nodes_train, y_train), (nodes_val, y_val)]
 
     return graph, eval_set
@@ -67,12 +67,12 @@ def parse_arguments():
     parser.add_argument('--runs', type=int, default=1)
     parser.add_argument('--device', type=str, default='cpu')
     parser.add_argument('--embedding_dim', type=int, default=128)
-    parser.add_argument('--walk_length', type=int, default=40)
+    parser.add_argument('--walk_length', type=int, default=50)
     parser.add_argument('--p', type=float, default=0.25)  # 0.25
     parser.add_argument('--q', type=float, default=4)  # 4
     parser.add_argument('--num_walks', type=int, default=10)
-    parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--epochs', type=int, default=3)
+    parser.add_argument('--batch_size', type=int, default=512)
 
     args = parser.parse_args()
 

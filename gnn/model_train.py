@@ -173,6 +173,9 @@ def gpu_train(proc_id, n_gpus, GPUS,
     else:
         train_nid_per_gpu = train_nid[proc_id * train_div: (proc_id + 1) * train_div]
         val_nid_per_gpu = val_nid[proc_id * val_div: (proc_id + 1) * val_div]
+        # use valid
+        if args.all_train:
+            train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu), axis=0)
         test_nid_per_gpu = test_nid[proc_id * test_div: (proc_id + 1) * test_div]
 
     sampler = MultiLayerNeighborSampler(fanouts)
@@ -279,26 +282,30 @@ def gpu_train(proc_id, n_gpus, GPUS,
             batch_inputs, batch_labels = load_subtensor(node_feat, labels, seeds, input_nodes, device_id)
             blocks = [block.to(device_id) for block in blocks]
 
-            perturb = th.FloatTensor(*batch_inputs.shape).uniform_(-args.step_size, args.step_size).to(device_id)
-            perturb.requires_grad_()
-            feat_input = batch_inputs + perturb
+            if args.flag:
+                perturb = th.FloatTensor(*batch_inputs.shape).uniform_(-args.step_size, args.step_size).to(device_id)
+                perturb.requires_grad_()
+                feat_input = batch_inputs + perturb
+            else:
+                feat_input = batch_inputs
             # metric and loss
             train_batch_logits = model(blocks, feat_input)
             # train_loss = loss_fn(train_batch_logits, batch_labels)
             train_loss = cross_entropy(train_batch_logits, batch_labels)
-            train_loss /= args.m
 
-            for _ in range(args.m-1):
-                train_loss.backward()
-                perturb_data = perturb.detach() + args.step_size * th.sign(perturb.grad.detach())
-                perturb.data = perturb_data.data
-                perturb.grad[:] = 0
-
-                feat_input = batch_inputs + perturb
-
-                train_batch_logits = model(blocks, feat_input)
-                train_loss = cross_entropy(train_batch_logits, batch_labels)
+            if args.flag:
                 train_loss /= args.m
+                for _ in range(args.m-1):
+                    train_loss.backward()
+                    perturb_data = perturb.detach() + args.step_size * th.sign(perturb.grad.detach())
+                    perturb.data = perturb_data.data
+                    perturb.grad[:] = 0
+
+                    feat_input = batch_inputs + perturb
+
+                    train_batch_logits = model(blocks, feat_input)
+                    train_loss = cross_entropy(train_batch_logits, batch_labels)
+                    train_loss /= args.m
             # backward
             # optimizer.zero_grad()
             train_loss.backward()
@@ -461,7 +468,7 @@ if __name__ == '__main__':
     parser.add_argument("--fanout", type=str, default='20,20,20')
     parser.add_argument("--test_fanout", type=str, default='20,20,20')
     parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--GPU', nargs='+', type=int, default=1)
+    parser.add_argument('--GPU', nargs='+', type=int, default=0)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--out_path', type=str, default='../outputs')
@@ -471,6 +478,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_label', action="store_true")
     parser.add_argument('--use_emb', action="store_true")
     parser.add_argument('--save_emb', action="store_true")
+    parser.add_argument('--flag', action="store_true")
     args = parser.parse_args()
 
     # parse arguments

@@ -429,7 +429,12 @@ def gpu_train(proc_id, n_gpus, GPUS,
 
         # x_all = th.cat(xs, dim=0)
         print(x_all.shape, flush=True)
-        th.save(x_all, '../dataset/y_soft.pt')
+        if args.gnn_model == 'graphattn':
+            th.save(x_all, '../dataset/y_soft.pt')
+        elif args.gnn_model == 'graphsage':
+            th.save(x_all, '../dataset/y_soft_sage.pt')
+        elif args.gnn_model == 'graphconv':
+            th.save(x_all, '../dataset/y_soft_conv.pt')
 
     # -------------------------5. Collect stats ------------------------------------#
     # best_preds = earlystoper.val_preds

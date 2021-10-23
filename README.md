@@ -64,7 +64,12 @@ test结果保存在`../outputs/submit_xxxx-xx-xx.csv`中。
 ```bash
 # pretrain model in backward
 cd gnn/
+# graphattn
 nohup python3 model_train.py --GPU 1 --use_emb --save_emb --flag --all_train > ../outputs/train1.log 2>&1 &
+# graphsage
+nohup python3 model_train.py --GPU 0 --use_emb --save_emb --gnn_model graphsage --flag --all_train > ../outputs/train.log 2>&1 &
+# graphconv
+nohup python3 model_train.py --GPU 1 --use_emb --save_emb --gnn_model graphconv --flag --all_train > ../outputs/train1.log 2>&1 &
 # run c&s
 cd ../correct_and_smooth
 python3 main.py --all_train

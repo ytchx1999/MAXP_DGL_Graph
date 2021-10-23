@@ -41,6 +41,16 @@ def main():
 
     # y_soft = torch.rand(labels.shape[0], 23)
     y_soft = torch.load('../dataset/y_soft.pt', map_location='cpu')
+
+    y_soft_sage = None
+    y_soft_conv = None
+    if os.path.exists('../dataset/y_soft_sage.pt'):
+        y_soft_sage = torch.load('../dataset/y_soft_sage.pt', map_location='cpu')
+    if os.path.exists('../dataset/y_soft_sage.pt'):
+        y_soft_conv = torch.load('../dataset/y_soft_conv.pt', map_location='cpu')
+    if y_soft_sage != None and y_soft_conv != None:
+        y_soft = 0.6 * y_soft + 0.2 * y_soft_sage + 0.2 * y_soft_conv
+
     y_soft = y_soft.softmax(dim=-1).to(device)
 
     y_pred = y_soft.argmax(dim=-1)

@@ -141,31 +141,59 @@ class GraphConvModel(thnn.Module):
         self.dropout = thnn.Dropout(dropout)
 
         self.layers = thnn.ModuleList()
+        self.bns = thnn.ModuleList()
+        self.res_linears = nn.ModuleList()
 
         # build multiple layers
         self.layers.append(dglnn.GraphConv(in_feats=self.in_feats,
                                            out_feats=self.hidden_dim,
                                            norm=self.norm,
                                            activation=self.activation, ))
+        self.bns.append(thnn.BatchNorm1d(self.hidden_dim))
+        self.res_linears.append(torch.nn.Linear(in_feats, hidden_dim))
+
         for l in range(1, (self.n_layers - 1)):
             self.layers.append(dglnn.GraphConv(in_feats=self.hidden_dim,
                                                out_feats=self.hidden_dim,
                                                norm=self.norm,
                                                activation=self.activation))
+            self.bns.append(thnn.BatchNorm1d(self.hidden_dim))
+            self.res_linears.append(torch.nn.Identity())
+
         self.layers.append(dglnn.GraphConv(in_feats=self.hidden_dim,
-                                           out_feats=self.n_classes,
+                                           out_feats=self.hidden_dim,
                                            norm=self.norm,
                                            activation=self.activation))
+        self.bns.append(thnn.BatchNorm1d(self.hidden_dim))
+        self.res_linears.append(torch.nn.Identity())
+
+        self.mlp = MLP(in_feats + hidden_dim * n_layers, 2 * n_classes, n_classes, num_layers=2, bn=True,
+                       end_up_with_fc=True, act='LeakyReLU')
 
     def forward(self, blocks, features):
+        # h = features
         h = features
+        h = F.dropout(h, p=0.1, training=self.training)
+        collect = []
+        num_output_nodes = blocks[-1].num_dst_nodes()
+        collect.append(h[:num_output_nodes])
 
+        # for l, (layer, block) in enumerate(zip(self.layers, blocks)):
+        #     h = layer(block, h)
+        #     if l != len(self.layers) - 1:
+        #         h = self.dropout(h)
         for l, (layer, block) in enumerate(zip(self.layers, blocks)):
+            h_res = h[:block.num_dst_nodes()]
             h = layer(block, h)
-            if l != len(self.layers) - 1:
-                h = self.dropout(h)
+            h = self.bns[l](h)
+            h = self.activation(h)
+            h = self.dropout(h)
 
-        return h
+            collect.append(h[:num_output_nodes])
+            h += self.res_linears[l](h_res)
+
+        return self.mlp(torch.cat(collect, -1))
+        # return h
 
 
 class GraphAttnModel(thnn.Module):

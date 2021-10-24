@@ -21,7 +21,7 @@ from dgl.dataloading.neighbor import MultiLayerNeighborSampler, MultiLayerFullNe
 from dgl.dataloading.pytorch import NodeDataLoader
 
 from models import GraphSageModel, GraphConvModel, GraphAttnModel
-from utils import load_dgl_graph, time_diff
+from utils import load_dgl_graph, load_dgl_ogb_graph, time_diff
 from model_utils import early_stopper, thread_wrapped_func
 import pickle
 import pandas as pd
@@ -484,6 +484,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_emb', action="store_true")
     parser.add_argument('--save_emb', action="store_true")
     parser.add_argument('--flag', action="store_true")
+    parser.add_argument('--ogb', action="store_true")
     args = parser.parse_args()
 
     # parse arguments
@@ -512,7 +513,10 @@ if __name__ == '__main__':
     print('Output path: {}'.format(OUT_PATH), flush=True)
 
     # Retrieve preprocessed data and add reverse edge and self-loop
-    graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph(BASE_PATH)
+    if args.ogb:
+        graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_ogb_graph(BASE_PATH)
+    else:
+        graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph(BASE_PATH)
     graph = dgl.to_bidirected(graph, copy_ndata=True)
     graph = dgl.add_self_loop(graph)
 

@@ -48,14 +48,24 @@ def main():
         y_soft_sage = torch.load('../dataset/y_soft_sage.pt', map_location='cpu')
     if os.path.exists('../dataset/y_soft_sage.pt'):
         y_soft_conv = torch.load('../dataset/y_soft_conv.pt', map_location='cpu')
-    if y_soft_sage != None and y_soft_conv != None:
-        y_soft = 0.6 * y_soft + 0.2 * y_soft_sage + 0.2 * y_soft_conv
+    # if y_soft_sage != None and y_soft_conv != None:
+    #     y_soft = 0.6 * y_soft + 0.2 * y_soft_sage + 0.2 * y_soft_conv
 
     y_soft = y_soft.softmax(dim=-1).to(device)
+    y_soft_sage = y_soft_sage.softmax(dim=-1).to(device)
+    y_soft_conv = y_soft_conv.softmax(dim=-1).to(device)
 
     y_pred = y_soft.argmax(dim=-1)
+    y_pred_sage = y_soft_sage.argmax(dim=-1)
+    y_pred_conv = y_soft_conv.argmax(dim=-1)
+
     val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    val_acc_sage = torch.sum(y_pred_sage[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    val_acc_conv = torch.sum(y_pred_conv[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+
     print(f'Pre valid acc: {val_acc:.4f}', flush=True)
+    print(f'Pre valid acc: {val_acc_sage:.4f}', flush=True)
+    print(f'Pre valid acc: {val_acc_conv:.4f}', flush=True)
 
     print('---------- Correct & Smoothing ----------', flush=True)
     cs = CorrectAndSmooth(num_correction_layers=args.num_correction_layers,
@@ -76,7 +86,24 @@ def main():
     y_pred = y_soft.argmax(dim=-1)
     val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
 
+    y_soft_sage = cs.correct(graph, y_soft_sage, labels[mask_idx], mask_idx)
+    y_soft_sage = cs.smooth(graph, y_soft_sage, labels[mask_idx], mask_idx)
+    y_pred_sage = y_soft_sage.argmax(dim=-1)
+    val_acc_sage = torch.sum(y_pred_sage[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+
+    y_soft_conv = cs.correct(graph, y_soft_conv, labels[mask_idx], mask_idx)
+    y_soft_conv = cs.smooth(graph, y_soft_conv, labels[mask_idx], mask_idx)
+    y_pred_conv = y_soft_conv.argmax(dim=-1)
+    val_acc_conv = torch.sum(y_pred_conv[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+
     print(f'Valid acc: {val_acc:.4f}', flush=True)
+    print(f'Valid acc: {val_acc_sage:.4f}', flush=True)
+    print(f'Valid acc: {val_acc_conv:.4f}', flush=True)
+
+    y_soft = 0.5 * y_soft + 0.4 * y_soft_sage + 0.1 * y_soft_conv
+    y_pred = y_soft.argmax(dim=-1)
+    val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    print(f'Final valid acc: {val_acc:.4f}', flush=True)
 
     # test
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:

@@ -263,7 +263,7 @@ class Node2vecModel(object):
             if self.eval_steps > 0:
                 if epochs % self.eval_steps == 0:
                     acc = self._evaluate_step()
-                    print("Epoch: {}, Train Loss: {:.4f`}, Val Acc: {:.4f}".format(i, loss, acc), flush=True)
+                    print("Epoch: {}, Train Loss: {:.4f}, Val Acc: {:.4f}".format(i, loss, acc), flush=True)
                     # print("Epoch: {}, Train Loss: {:.4f}, Val Acc: {:.4f}".format(i, loss), flush=True)
 
     def embedding(self, nodes=None):

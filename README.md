@@ -95,7 +95,7 @@ ogbn-papers100M进行训练并保存model参数。
 ```bash
 cd ogb/
 # then run gnn in backward
-nohup python3 model_train.py --GPU 0 --ogb > ../outputs/ogb.log 2>&1 &
+nohup python3 model_train.py --GPU 0 --ogb --all_train > ../outputs/ogb.log 2>&1 &
 ```
 
 ---

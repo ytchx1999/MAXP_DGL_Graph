@@ -165,18 +165,18 @@ def gpu_train(proc_id, n_gpus, GPUS,
     if proc_id == (n_gpus - 1):
         train_nid_per_gpu = train_nid[proc_id * train_div:]
         val_nid_per_gpu = val_nid[proc_id * val_div:]
-        # use valid
-        if args.all_train:
-            train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu), axis=0)
         test_nid_per_gpu = test_nid[proc_id * test_div:]
+        # use valid and test
+        if args.all_train:
+            train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu, test_nid_per_gpu), axis=0)
     # in case of multiple GPUs, split training/validation index to different GPUs
     else:
         train_nid_per_gpu = train_nid[proc_id * train_div: (proc_id + 1) * train_div]
         val_nid_per_gpu = val_nid[proc_id * val_div: (proc_id + 1) * val_div]
+        test_nid_per_gpu = test_nid[proc_id * test_div: (proc_id + 1) * test_div]
         # use valid
         if args.all_train:
-            train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu), axis=0)
-        test_nid_per_gpu = test_nid[proc_id * test_div: (proc_id + 1) * test_div]
+            train_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu, test_nid_per_gpu), axis=0)
 
     sampler = MultiLayerNeighborSampler(fanouts)
     test_sampler = MultiLayerNeighborSampler(test_fanouts)  # test
@@ -200,25 +200,25 @@ def gpu_train(proc_id, n_gpus, GPUS,
     test_dataloader = NodeDataLoader(graph,
                                      test_nid_per_gpu,
                                      test_sampler,
-                                     batch_size=256,
+                                     batch_size=64,
                                      shuffle=False,
                                      drop_last=False,
                                      num_workers=num_workers,
                                      )
-    if args.all_train:
-        all_nid_per_gpu = np.concatenate((train_nid_per_gpu, test_nid_per_gpu), axis=0)
-        # all_nid_per_gpu = train_nid_per_gpu
-    else:
-        all_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu, test_nid_per_gpu), axis=0)
-    all_sampler = MultiLayerNeighborSampler(test_fanouts)
-    graph_loader = NodeDataLoader(graph,
-                                  all_nid_per_gpu,
-                                  all_sampler,
-                                  batch_size=256,
-                                  shuffle=False,
-                                  drop_last=False,
-                                  num_workers=num_workers,
-                                  )
+    # if args.all_train:
+    #     all_nid_per_gpu = np.concatenate((train_nid_per_gpu, test_nid_per_gpu), axis=0)
+    #     # all_nid_per_gpu = train_nid_per_gpu
+    # else:
+    #     all_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu, test_nid_per_gpu), axis=0)
+    # all_sampler = MultiLayerNeighborSampler(test_fanouts)
+    # graph_loader = NodeDataLoader(graph,
+    #                               all_nid_per_gpu,
+    #                               all_sampler,
+    #                               batch_size=256,
+    #                               shuffle=False,
+    #                               drop_last=False,
+    #                               num_workers=num_workers,
+    #                               )
     e_t1 = dt.datetime.now()
     h, m, s = time_diff(e_t1, start_t)
     print('Model built used: {:02d}h {:02d}m {:02}s'.format(h, m, s), flush=True)
@@ -379,9 +379,9 @@ def gpu_train(proc_id, n_gpus, GPUS,
 
                 if step % 10 == 0:
                     print('In epoch:{:03d}|batch:{:04d}, test_loss:{:4f}, test_acc:{:.4f}'.format(epoch,
-                                                                                                  step,
-                                                                                                  np.mean(test_loss_list),
-                                                                                                  test_batch_pred.detach()), flush=True)
+                                                                                                step,
+                                                                                                np.mean(test_loss_list),
+                                                                                                test_batch_pred.detach()), flush=True)
             # put validation results into message queue and aggregate at device 0
             if n_gpus > 1 and message_queue != None:
                 message_queue.put(test_loss_list)

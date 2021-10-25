@@ -90,6 +90,14 @@ test结果保存在`../outputs/submit_cs_xxxx-xx-xx.csv`中。
 --GPU 0 1 2 3
 ```
 
+## ogbn-papers100M预训练
+ogbn-papers100M进行训练并保存model参数。
+```bash
+cd ogb/
+# then run gnn in backward
+nohup python3 model_train.py --GPU 0 --ogb > ../outputs/ogb.log 2>&1 &
+```
+
 ---
 ## 其他说明
 ### 如何调试

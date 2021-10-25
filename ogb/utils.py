@@ -79,7 +79,8 @@ def load_dgl_ogb_graph(base_path):
 
     # return graph, labels, tr_label_idx, val_label_idx, test_label_idx, node_feat
 
-    dgldataset = DglNodePropPredDataset('ogbn-papers100M', root='../dataset/ogbn_papers100M')  # 有待修改
+    dgldataset = DglNodePropPredDataset('ogbn-papers100M', root='../')  # 有待修改
+    print(dgldataset, flush=True)
     graph, labels = dgldataset[0]
     # srcs, dsts = graph.all_edges()
     # graph.add_edges(dsts, srcs)

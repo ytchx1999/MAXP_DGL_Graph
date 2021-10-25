@@ -191,7 +191,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
                                       )
     val_dataloader = NodeDataLoader(graph,
                                     val_nid_per_gpu,
-                                    test_sampler,
+                                    sampler,
                                     batch_size=batch_size,
                                     shuffle=True,
                                     drop_last=False,

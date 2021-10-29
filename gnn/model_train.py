@@ -20,7 +20,7 @@ import dgl
 from dgl.dataloading.neighbor import MultiLayerNeighborSampler, MultiLayerFullNeighborSampler
 from dgl.dataloading.pytorch import NodeDataLoader
 
-from models import GraphSageModel, GraphConvModel, GraphAttnModel
+from models import GraphSageModel, GraphConvModel, GraphAttnModel, GAT
 from utils import load_dgl_graph, load_dgl_ogb_graph, time_diff
 from model_utils import early_stopper, thread_wrapped_func
 import pickle
@@ -28,9 +28,21 @@ import pandas as pd
 import time
 from tqdm import tqdm
 import math
+import random
 
 
 epsilon = 1 - math.log(2)
+
+
+def seed(seed=0):
+    random.seed(seed)
+    np.random.seed(seed)
+    th.manual_seed(seed)
+    th.cuda.manual_seed(seed)
+    th.cuda.manual_seed_all(seed)
+    th.backends.cudnn.deterministic = True
+    th.backends.cudnn.benchmark = False
+    dgl.random.seed(seed)
 
 
 def cross_entropy(x, labels):
@@ -192,7 +204,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
     val_dataloader = NodeDataLoader(graph,
                                     val_nid_per_gpu,
                                     test_sampler,
-                                    batch_size=batch_size,
+                                    batch_size=256,
                                     shuffle=True,
                                     drop_last=False,
                                     num_workers=num_workers,
@@ -200,7 +212,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
     test_dataloader = NodeDataLoader(graph,
                                      test_nid_per_gpu,
                                      test_sampler,
-                                     batch_size=batch_size,
+                                     batch_size=256,
                                      shuffle=False,
                                      drop_last=False,
                                      num_workers=num_workers,
@@ -214,7 +226,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
     graph_loader = NodeDataLoader(graph,
                                   all_nid_per_gpu,
                                   all_sampler,
-                                  batch_size=batch_size,
+                                  batch_size=256,
                                   shuffle=False,
                                   drop_last=False,
                                   num_workers=num_workers,
@@ -246,8 +258,33 @@ def gpu_train(proc_id, n_gpus, GPUS,
         model = GraphConvModel(in_feat, hidden_dim, n_layers, n_classes,
                                norm='both', activation=F.relu, dropout=0)
     elif gnn_model == 'graphattn':
-        model = GraphAttnModel(in_feat, hidden_dim, n_layers, n_classes,
-                               heads=([5] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
+        if args.pretrain:
+            model = GraphAttnModel(128, hidden_dim, n_layers, 172,
+                                   heads=([4] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
+            state_dict = th.load('../outputs/dgl_ogb_model-081260.pth', map_location='cpu')  # 修改路径
+            model.load_state_dict(state_dict)
+            # for param in model.parameters():
+            #     param.requires_grad = False
+            model.node_encoder = th.nn.Linear(in_feat, hidden_dim)
+            model.pred_linear = th.nn.Linear(4 * hidden_dim, n_classes)
+        else:
+            # model = GraphAttnModel(in_feat, hidden_dim, n_layers, n_classes,
+            #                        heads=([4] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
+            model = GAT(
+                in_feat,
+                n_classes,
+                n_hidden=hidden_dim,
+                n_layers=n_layers,
+                n_heads=5,
+                activation=F.relu,
+                dropout=0.5,
+                input_drop=0.1,
+                attn_drop=0.0,
+                edge_drop=0.3,
+                use_attn_dst=False,
+                use_symmetric_norm=True,
+            )
+
     else:
         raise NotImplementedError('So far, only support three algorithms: GraphSage, GraphConv, and GraphAttn')
 
@@ -264,7 +301,9 @@ def gpu_train(proc_id, n_gpus, GPUS,
     # ------------------- 3. Build loss function and optimizer -------------------------- #
     loss_fn = thnn.CrossEntropyLoss().to(device_id)
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
-    scheduler = th.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)  # lr adjustment
+    # scheduler = th.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)  # lr adjustment
+    scheduler = th.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, factor=0.8,
+                                                        patience=800, verbose=True)
 
     earlystoper = early_stopper(patience=2, verbose=False)
 
@@ -314,12 +353,13 @@ def gpu_train(proc_id, n_gpus, GPUS,
             train_loss_list.append(train_loss.cpu().detach().numpy())
             tr_batch_pred = th.sum(th.argmax(train_batch_logits, dim=1) == batch_labels) / th.tensor(batch_labels.shape[0])
 
+            scheduler.step(train_loss)
+
             if step % 10 == 0:
                 print('In epoch:{:03d}|batch:{:04d}, train_loss:{:4f}, train_acc:{:.4f}'.format(epoch,
                                                                                                 step,
                                                                                                 np.mean(train_loss_list),
                                                                                                 tr_batch_pred.detach()), flush=True)
-        scheduler.step()
 
         # mini-batch for validation
         # best_val_acc = 0
@@ -470,22 +510,24 @@ if __name__ == '__main__':
     parser.add_argument('--gnn_model', type=str, choices=['graphsage', 'graphconv', 'graphattn'], default='graphattn')
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--n_layers', type=int, default=3)
-    parser.add_argument("--fanout", type=str, default='20,20,20')
-    parser.add_argument("--test_fanout", type=str, default='20,20,20')
+    parser.add_argument("--fanout", type=str, default='25,15,10')
+    parser.add_argument("--test_fanout", type=str, default='60,60,60')
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--GPU', nargs='+', type=int, default=0)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--epochs', type=int, default=15)
     parser.add_argument('--out_path', type=str, default='../outputs')
     parser.add_argument('--step-size', type=float, default=1e-3)
     parser.add_argument('-m', type=int, default=3)
     parser.add_argument('--all_train', action="store_true")
     parser.add_argument('--use_label', action="store_true")
-    parser.add_argument('--use_emb', action="store_true")
+    parser.add_argument('--use_emb', type=str, default='sgc')
     parser.add_argument('--save_emb', action="store_true")
     parser.add_argument('--flag', action="store_true")
-    parser.add_argument('--ogb', action="store_true")
+    parser.add_argument('--pretrain', action="store_true")
     args = parser.parse_args()
+
+    seed(1)
 
     # parse arguments
     BASE_PATH = args.data_path
@@ -513,18 +555,33 @@ if __name__ == '__main__':
     print('Output path: {}'.format(OUT_PATH), flush=True)
 
     # Retrieve preprocessed data and add reverse edge and self-loop
-    if args.ogb:
-        graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_ogb_graph(BASE_PATH)
-    else:
-        graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph(BASE_PATH)
+    # if args.ogb:
+    #     graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_ogb_graph(BASE_PATH)
+    # else:
+    graph, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph(BASE_PATH)
     graph = dgl.to_bidirected(graph, copy_ndata=True)
     graph = dgl.add_self_loop(graph)
 
-    if args.use_emb:
+    if args.use_emb == 'node2vec':
         print("Use node2vec embedding...", flush=True)
         emb = th.load('../dataset/emb.pt', map_location='cpu')
         emb.requires_grad = False
         node_feat = th.cat([node_feat, emb], dim=1)
+    elif args.use_emb == 'sgc':
+        print("Use sgc embedding...", flush=True)
+        sgc_list = th.load('../dataset/sgc_emb.pt', map_location='cpu')
+        # node_feat = th.cat(sgc_list, dim=1)
+        node_feat = th.stack(sgc_list, dim=1)
+        node_feat = th.mean(node_feat, dim=1)
+
+        emb = th.load('../dataset/emb.pt', map_location='cpu')
+        emb.requires_grad = False
+        node_feat = th.cat([node_feat, emb], dim=1)
+
+        # emb = th.load('../dataset/sgc_emb.pt', map_location='cpu')
+        # emb.requires_grad = False
+        # # node_feat = th.cat([node_feat, emb], dim=1)
+        # node_feat = emb
 
     # add labels
     if args.use_label:

@@ -341,7 +341,7 @@ def define_parser():
     parser.add_argument("--zero-inits", action="store_true",
                         help="Whether to initialize hop attention vector as zeros")
     parser.add_argument("--lr", type=float, default=0.002)
-    parser.add_argument("--dataset", type=str, default="ppi")
+    parser.add_argument("--dataset", type=str, default="maxp")
     parser.add_argument("--data_dir", type=str, default="../dataset")
     parser.add_argument("--model", type=str, default="sagn")
     parser.add_argument("--pretrain-model", type=str, default="ComplEx")

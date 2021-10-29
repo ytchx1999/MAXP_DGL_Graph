@@ -13,6 +13,8 @@ import json
 
 from networkx.readwrite import json_graph
 
+from utils import load_dgl_graph
+
 
 def get_ogb_evaluator(dataset):
     """
@@ -24,6 +26,7 @@ def get_ogb_evaluator(dataset):
         "y_pred": preds.view(-1, 1),
     })["acc"]
 
+
 class ACCEvaluator(object):
 
     def __init__(self):
@@ -32,6 +35,7 @@ class ACCEvaluator(object):
     def __call__(self, y_pred, y_true):
 
         return accuracy_score(y_true.cpu(), y_pred.cpu())
+
 
 class F1Evaluator(object):
 
@@ -43,6 +47,7 @@ class F1Evaluator(object):
 
         return f1_score(y_true.cpu(), y_pred.cpu(), average=self.average)
 
+
 def get_evaluator(name):
     if name in ["cora"]:
         evaluator = ACCEvaluator()
@@ -51,6 +56,7 @@ def get_evaluator(name):
     else:
         evaluator = get_ogb_evaluator(name)
     return evaluator
+
 
 def load_dataset(device, args):
     """
@@ -106,7 +112,7 @@ def load_dataset(device, args):
             g.ndata['val_mask'] = pyg_data.val_mask
             g.ndata['test_mask'] = pyg_data.test_mask
             n_classes = labels.max().item() + 1
-        
+
         train_mask = g.ndata['train_mask']
         val_mask = g.ndata['val_mask']
         test_mask = g.ndata['test_mask']
@@ -117,14 +123,25 @@ def load_dataset(device, args):
         labels = g.ndata['label']
 
     else:
-        dataset = DglNodePropPredDataset(name=args.dataset, root=args.data_dir)
-        splitted_idx = dataset.get_idx_split()
-        train_nid = splitted_idx["train"]
-        val_nid = splitted_idx["valid"]
-        test_nid = splitted_idx["test"]
-        g, labels = dataset[0]
-        n_classes = dataset.num_classes
-        g = g.to(device)
+        if args.dataset == 'maxp':
+            g, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph('../../dataset')
+            g = dgl.to_bidirected(g, copy_ndata=True)
+            g = dgl.add_self_loop(g)
+            g.ndata["feat"] = node_feat
+            train_nid = torch.from_numpy(train_nid)
+            val_nid = torch.from_numpy(val_nid)
+            test_nid = torch.from_numpy(test_nid)
+            n_classes = 23
+            g = g.to(device)
+        else:
+            dataset = DglNodePropPredDataset(name=args.dataset, root=args.data_dir)
+            splitted_idx = dataset.get_idx_split()
+            train_nid = splitted_idx["train"]
+            val_nid = splitted_idx["valid"]
+            test_nid = splitted_idx["test"]
+            g, labels = dataset[0]
+            n_classes = dataset.num_classes
+            g = g.to(device)
 
         if args.dataset == "ogbn-arxiv":
             g = dgl.add_reverse_edges(g, copy_ndata=True)
@@ -163,13 +180,16 @@ def load_dataset(device, args):
 
             labels = labels.to(device).squeeze()
             n_classes = int(labels.max() - labels.min()) + 1
-        
+
         else:
             g.ndata['feat'] = g.ndata['feat'].float()
 
         labels = labels.squeeze()
 
-    evaluator = get_evaluator(args.dataset)
+    if args.dataset == 'maxp':
+        evaluator = None
+    else:
+        evaluator = get_evaluator(args.dataset)
 
     print(f"# Nodes: {g.number_of_nodes()}\n"
           f"# Edges: {g.number_of_edges()}\n"
@@ -180,12 +200,13 @@ def load_dataset(device, args):
 
     return g, labels, n_classes, train_nid, val_nid, test_nid, evaluator
 
+
 def load_ppi_data(root):
     DataType = namedtuple('Dataset', ['num_classes', 'g'])
     adj_full = sp.load_npz(os.path.join(root, 'ppi', 'adj_full.npz'))
     G = dgl.from_scipy(adj_full)
     nodes_num = G.num_nodes()
-    role = json.load(open(os.path.join(root, 'ppi','role.json'),'r'))
+    role = json.load(open(os.path.join(root, 'ppi', 'role.json'), 'r'))
     tr = list(role['tr'])
     te = list(role['te'])
     va = list(role['va'])
@@ -196,12 +217,12 @@ def load_ppi_data(root):
     val_mask[va] = True
     test_mask = mask.copy()
     test_mask[te] = True
-    
+
     G.ndata['train_mask'] = torch.tensor(train_mask, dtype=torch.bool)
     G.ndata['val_mask'] = torch.tensor(val_mask, dtype=torch.bool)
     G.ndata['test_mask'] = torch.tensor(test_mask, dtype=torch.bool)
 
-    feats=np.load(os.path.join(root, 'ppi', 'feats.npy'))
+    feats = np.load(os.path.join(root, 'ppi', 'feats.npy'))
     G.ndata['feat'] = torch.tensor(feats, dtype=torch.float)
 
     class_map = json.load(open(os.path.join(root, 'ppi', 'class_map.json'), 'r'))
@@ -209,6 +230,7 @@ def load_ppi_data(root):
     G.ndata['label'] = torch.tensor(labels, dtype=torch.float)
     data = DataType(g=G, num_classes=labels.shape[1])
     return data
+
 
 def load_ppi_large_data():
     '''Wraps the dgl's load_data utility to handle ppi special case'''

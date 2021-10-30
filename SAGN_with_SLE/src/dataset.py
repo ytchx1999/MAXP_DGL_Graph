@@ -176,7 +176,7 @@ def load_dataset(device, args):
                 paper_feat = g.nodes["paper"].data.pop("feat")
                 rand_weight = torch.Tensor(paper_dim, author_dim).uniform_(-0.5, 0.5)
                 g.nodes["paper"].data["feat"] = torch.matmul(paper_feat, rand_weight.to(device))
-                print(f"Randomly project paper feature from dimension {paper_dim} to {author_dim}")
+                print(f"Randomly project paper feature from dimension {paper_dim} to {author_dim}", flush=True)
 
             labels = labels.to(device).squeeze()
             n_classes = int(labels.max() - labels.min()) + 1
@@ -196,7 +196,7 @@ def load_dataset(device, args):
           f"# Train: {len(train_nid)}\n"
           f"# Val: {len(val_nid)}\n"
           f"# Test: {len(test_nid)}\n"
-          f"# Classes: {n_classes}")
+          f"# Classes: {n_classes}", flush=True)
 
     return g, labels, n_classes, train_nid, val_nid, test_nid, evaluator
 

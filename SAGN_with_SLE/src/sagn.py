@@ -20,6 +20,8 @@ from gen_models import get_model
 from pre_process import prepare_data
 from train_process import test, train
 from utils import read_subset_list, generate_subset_list, get_n_params, seed
+import pickle
+from tqdm import tqdm
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -27,12 +29,18 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 def run(args, data, device, stage=0, subset_list=None):
     feats, label_emb, teacher_probs, labels, labels_with_pseudos, in_feats, n_classes, \
         train_nid, train_nid_with_pseudos, val_nid, test_nid, evaluator, _ = data
-    if args.dataset == "ogbn-papers100M":
+
+    # train_nid_raw = train_nid.clone().to(device)
+    # val_nid_raw = val_nid.clone().to(device)
+    # test_nid_raw = test_nid.clone().to(device)
+    if args.dataset == "ogbn-papers100M" or args.dataset == "maxp":
         # We only store test/val/test nodes' features for ogbn-papers100M
         labels = labels[torch.cat([train_nid, val_nid, test_nid], dim=0)]
         labels_with_pseudos = labels_with_pseudos[torch.cat([train_nid, val_nid, test_nid], dim=0)]
         id_map = dict(zip(torch.cat([train_nid, val_nid, test_nid], dim=0).cpu().long().numpy(), np.arange(len(train_nid) + len(val_nid) + len(test_nid))))
+        # rev_id_map = dict(zip(np.arange(len(train_nid) + len(val_nid) + len(test_nid)), torch.cat([train_nid, val_nid, test_nid], dim=0).cpu().long().numpy()))
         def map_func(x): return torch.from_numpy(np.array([id_map[a] for a in x.cpu().numpy()])).to(device)
+        # def rev_map_func(x): return torch.from_numpy(np.array([id_map[a] for a in x.cpu().numpy()])).to(device)
         train_nid = map_func(train_nid)
         val_nid = map_func(val_nid)
         test_nid = map_func(test_nid)
@@ -60,7 +68,7 @@ def run(args, data, device, stage=0, subset_list=None):
     label_in_feats = label_emb.shape[1] if label_emb is not None else n_classes
     model = get_model(in_feats, label_in_feats, n_classes, stage, args, subset_list=subset_list)
     model = model.to(device)
-    print("# Params:", get_n_params(model))
+    print("# Params:", get_n_params(model), flush=True)
 
     if args.dataset in ["ppi", "ppi_large", "yelp"]:
         # For multilabel classification
@@ -106,11 +114,11 @@ def run(args, data, device, stage=0, subset_list=None):
             val_accs.append(acc[1])
             val_loss.append(acc[-2])
             log = "Epoch {}, Time(s): {:.4f} {:.4f}, ".format(epoch, med - start, acc[-1])
-            log += "Best Val loss: {:.4f}, Accs: Train: {:.4f}, Val: {:.4f}, Test: {:.4f}, Best Val: {:.4f}, Best Test: {:.4f}".format(best_val_loss, acc[0], acc[1], acc[2], best_val, best_test)
-            print(log)
+            log += "Best Val loss: {:.4f}, Accs: Train: {:.4f}, Val: {:.4f}, Test: {:.4f}, Best Val: {:.4f}, Best Test: {}".format(best_val_loss, acc[0], acc[1], acc[2], best_val, best_test)
+            print(log, flush=True)
 
     print("Stage: {}, Best Epoch {}, Val {:.4f}, Test {:.4f}".format(
-        stage, best_epoch, best_val, best_test))
+        stage, best_epoch, best_val, best_test), flush=True)
     with torch.no_grad():
         best_model.eval()
         probs = []
@@ -147,7 +155,34 @@ def run(args, data, device, stage=0, subset_list=None):
     del feats, label_emb, teacher_probs, labels, labels_with_pseudos
     with torch.cuda.device(device):
         torch.cuda.empty_cache()
-    return best_val, best_test, probs, train_time, inference_time, val_accs, val_loss, attn_weights
+
+    # if args.dataset == 'maxp':
+    #     with open(os.path.join('../../dataset/test_id_dict.pkl'), 'rb') as f:
+    #         test_id_dict = pickle.load(f)
+    #     submit = pd.read_csv('../../dataset/sample_submission_for_validation.csv')
+    #     with open(os.path.join('../../dataset/csv_idx_map.pkl'), 'rb') as f:
+    #         idx_map = pickle.load(f)
+    #     preds = torch.argmax(probs, dim=-1)
+    #     test_seeds_list = test_nid_raw
+    #     test_pred_list = preds[test_nid]
+
+    #     # save results
+    #     for i, id in tqdm(enumerate(test_seeds_list)):
+    #         paper_id = test_id_dict[id.item()]
+    #         label = chr(int(test_pred_list[i].item() + 65))
+
+    #         # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
+    #         if paper_id in idx_map:
+    #             csv_index = idx_map[paper_id]
+    #             submit['label'][csv_index] = label
+
+    #     if not os.path.exists('../../outputs'):
+    #         os.makedirs('../../outputs', exist_ok=True)
+    #     submit.to_csv(os.path.join('../../outputs/', f'submit_sagn_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+
+    #     print("Done!")
+
+    return best_val, best_test, probs, train_time, inference_time, val_accs, val_loss, attn_weights, test_nid
 
 
 def main(args):
@@ -167,8 +202,8 @@ def main(args):
     total_inference_times = []
 
     for i in range(args.num_runs):
-        print("-" * 100)
-        print(f"Run {i} start training")
+        print("-" * 100, flush=True)
+        print(f"Run {i} start training", flush=True)
         seed(seed=args.seed + i)
 
         if args.dataset == "ogbn-mag":
@@ -197,12 +232,12 @@ def main(args):
                                               args.dataset,
                                               args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
                                               f'use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_probs_seed_{args.seed + i}_stage_{stage}.pt')
-                    print(probs_path)
+                    print(probs_path, flush=True)
                     if os.path.exists(probs_path):
-                        print(f"bypass stage {stage} since warmup_stage is set and associated file exists.")
+                        print(f"bypass stage {stage} since warmup_stage is set and associated file exists.", flush=True)
                         continue
-            print("-" * 100)
-            print(f"Stage {stage} start training")
+            print("-" * 100, flush=True)
+            print(f"Stage {stage} start training", flush=True)
             if stage > 0:
                 probs_path = os.path.join(args.probs_dir, args.dataset,
                                           args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
@@ -212,78 +247,112 @@ def main(args):
 
             with torch.no_grad():
                 data = prepare_data(device, args, probs_path, stage, load_embs=args.load_embs, load_label_emb=args.load_label_emb, subset_list=subset_list)
+            _, _, _, _, _, _, _, _, _, _, test_nid_raw, _, _ = data
+
+            # train_nid_raw = train_nid.clone().to(device)
+            # val_nid_raw = val_nid.clone().to(device)
+            test_nid_raw = test_nid_raw.to(device)
+
             preprocessing_times.append(data[-1])
-            print(f"Preprocessing costs {(data[-1]):.4f} s")
-            best_val, best_test, probs, train_time, inference_time, val_acc, val_loss, attn_weights = run(args, data, device, stage, subset_list=subset_list)
+            print(f"Preprocessing costs {(data[-1]):.4f} s", flush=True)
+            best_val, best_test, probs, train_time, inference_time, val_acc, val_loss, attn_weights, test_nid = run(args, data, device, stage, subset_list=subset_list)
             train_times.append(train_time)
             inference_times.append(inference_time)
-            val_accs.append(val_acc)
-            val_losses.append(val_loss)
+
+            # val_accs.append(val_acc)
+            # val_losses.append(val_loss)
             new_probs_path = os.path.join(args.probs_dir, args.dataset,
                                           args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
                                           f'use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_probs_seed_{args.seed + i}_stage_{stage}.pt')
             if not os.path.exists(os.path.dirname(new_probs_path)):
                 os.makedirs(os.path.dirname(new_probs_path))
             torch.save(probs, new_probs_path)
-            best_val_accs.append(best_val)
-            best_test_accs.append(best_test)
+            # best_val_accs.append(best_val)
+            # best_test_accs.append(best_test)
 
-            path = os.path.join("../converge_stats", args.dataset,
-                                args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
-                                f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.csv")
-            if not os.path.exists(os.path.dirname(path)):
-                os.makedirs(os.path.dirname(path))
-            # print(val_acc)
-            df = pd.DataFrame()
-            df['epoch'] = np.arange(args.eval_every, args.epoch_setting[stage] + 1, args.eval_every)
-            df['val_acc'] = val_acc
-            df.to_csv(path)
-            fig_path = os.path.join("../converge_stats", args.dataset,
-                                    args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
-                                    f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.png")
-            sns.set()
-            line_plt = sns.lineplot(data=df, x='epoch', y='val_acc')
-            line = line_plt.get_figure()
-            line.savefig(fig_path)
-            plt.close()
+            # path = os.path.join("../converge_stats", args.dataset,
+            #                     args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
+            #                     f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.csv")
+            # if not os.path.exists(os.path.dirname(path)):
+            #     os.makedirs(os.path.dirname(path))
+            # # print(val_acc)
+            # df = pd.DataFrame()
+            # df['epoch'] = np.arange(args.eval_every, args.epoch_setting[stage] + 1, args.eval_every)
+            # df['val_acc'] = val_acc
+            # df.to_csv(path)
+            # fig_path = os.path.join("../converge_stats", args.dataset,
+            #                         args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
+            #                         f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.png")
+            # sns.set()
+            # line_plt = sns.lineplot(data=df, x='epoch', y='val_acc')
+            # line = line_plt.get_figure()
+            # line.savefig(fig_path)
+            # plt.close()
 
-            path = os.path.join("../converge_stats", args.dataset,
-                                args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
-                                f"val_loss_use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.csv")
-            if not os.path.exists(os.path.dirname(path)):
-                os.makedirs(os.path.dirname(path))
-            # print(val_loss)
-            df = pd.DataFrame()
-            df['epoch'] = np.arange(args.eval_every, args.epoch_setting[stage] + 1, args.eval_every)
-            df['val_loss'] = val_loss
-            df.to_csv(path)
-            fig_path = os.path.join("../converge_stats", args.dataset,
-                                    args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
-                                    f"val_loss_use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.png")
-            sns.set()
-            line_plt = sns.lineplot(data=df, x='epoch', y='val_loss')
-            line = line_plt.get_figure()
-            line.savefig(fig_path)
-            plt.close()
+            # path = os.path.join("../converge_stats", args.dataset,
+            #                     args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
+            #                     f"val_loss_use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.csv")
+            # if not os.path.exists(os.path.dirname(path)):
+            #     os.makedirs(os.path.dirname(path))
+            # # print(val_loss)
+            # df = pd.DataFrame()
+            # df['epoch'] = np.arange(args.eval_every, args.epoch_setting[stage] + 1, args.eval_every)
+            # df['val_loss'] = val_loss
+            # df.to_csv(path)
+            # fig_path = os.path.join("../converge_stats", args.dataset,
+            #                         args.model if (args.weight_style == "attention") else (args.model + "_" + args.weight_style),
+            #                         f"val_loss_use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.png")
+            # sns.set()
+            # line_plt = sns.lineplot(data=df, x='epoch', y='val_loss')
+            # line = line_plt.get_figure()
+            # line.savefig(fig_path)
+            # plt.close()
 
-            if (args.model in ["sagn", "plain_sagn"] and args.weight_style == "attention") and (not args.avoid_features):
-                path = os.path.join("../attn_weights", args.dataset, args.model,
-                                    f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.csv")
-                if not os.path.exists(os.path.dirname(path)):
-                    os.makedirs(os.path.dirname(path))
-                df = pd.DataFrame(data=attn_weights.cpu().numpy())
-                df.to_csv(path)
-                fig_path = os.path.join("../attn_weights", args.dataset, args.model,
-                                        f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.png")
-                sns.set()
-                heatmap_plt = sns.heatmap(df)
-                heatmap = heatmap_plt.get_figure()
-                heatmap.savefig(fig_path)
-                plt.close()
+            # if (args.model in ["sagn", "plain_sagn"] and args.weight_style == "attention") and (not args.avoid_features):
+            #     path = os.path.join("../attn_weights", args.dataset, args.model,
+            #                         f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.csv")
+            #     if not os.path.exists(os.path.dirname(path)):
+            #         os.makedirs(os.path.dirname(path))
+            #     df = pd.DataFrame(data=attn_weights.cpu().numpy())
+            #     df.to_csv(path)
+            #     fig_path = os.path.join("../attn_weights", args.dataset, args.model,
+            #                             f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}_K_{args.K}_label_K_{args.label_K}_seed_{args.seed + i}_stage_{stage}.png")
+            #     sns.set()
+            #     heatmap_plt = sns.heatmap(df)
+            #     heatmap = heatmap_plt.get_figure()
+            #     heatmap.savefig(fig_path)
+            #     plt.close()
 
-            del data, df, probs, attn_weights
-            with torch.cuda.device(device):
-                torch.cuda.empty_cache()
+            # del data, df, probs, attn_weights
+            # with torch.cuda.device(device):
+            #     torch.cuda.empty_cache()
+
+        if args.dataset == 'maxp':
+            with open(os.path.join('../../dataset/test_id_dict.pkl'), 'rb') as f:
+                test_id_dict = pickle.load(f)
+            submit = pd.read_csv('../../dataset/sample_submission_for_validation.csv')
+            with open(os.path.join('../../dataset/csv_idx_map.pkl'), 'rb') as f:
+                idx_map = pickle.load(f)
+            preds = torch.argmax(probs, dim=-1)
+            test_seeds_list = test_nid_raw
+            test_pred_list = preds[test_nid]
+
+            # save results
+            for i, id in tqdm(enumerate(test_seeds_list)):
+                paper_id = test_id_dict[id.item()]
+                label = chr(int(test_pred_list[i].item() + 65))
+
+                # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
+                if paper_id in idx_map:
+                    csv_index = idx_map[paper_id]
+                    submit['label'][csv_index] = label
+
+            if not os.path.exists('../../outputs'):
+                os.makedirs('../../outputs', exist_ok=True)
+            submit.to_csv(os.path.join('../../outputs/', f'submit_sagn_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+
+            print("Done!", flush=True)
+
         total_best_val_accs.append(best_val_accs)
         total_best_test_accs.append(best_test_accs)
         total_val_accs.append(val_accs)
@@ -304,15 +373,15 @@ def main(args):
 
     for stage in range(len(args.epoch_setting)):
         print(f"Stage: {stage}, Val accuracy: {np.mean(total_best_val_accs[:, stage]):.4f}±"
-              f"{np.std(total_best_val_accs[:, stage]):.4f}")
+              f"{np.std(total_best_val_accs[:, stage]):.4f}", flush=True)
         print(f"Stage: {stage}, Test accuracy: {np.mean(total_best_test_accs[:, stage]):.4f}±"
-              f"{np.std(total_best_test_accs[:, stage]):.4f}")
+              f"{np.std(total_best_test_accs[:, stage]):.4f}", flush=True)
         print(f"Stage: {stage}, Preprocessing time: {np.mean(total_preprocessing_times[:, stage]):.4f}±"
-              f"{np.std(total_preprocessing_times[:, stage]):.4f}")
+              f"{np.std(total_preprocessing_times[:, stage]):.4f}", flush=True)
         print(f"Stage: {stage}, Training time: {np.hstack(total_train_times[:, stage]).mean():.4f}±"
-              f"{np.hstack(total_train_times[:, stage]).std():.4f}")
+              f"{np.hstack(total_train_times[:, stage]).std():.4f}", flush=True)
         print(f"Stage: {stage}, Inference time: {np.hstack(total_inference_times[:, stage]).mean():.4f}±"
-              f"{np.hstack(total_inference_times[:, stage]).std():.4f}")
+              f"{np.hstack(total_inference_times[:, stage]).std():.4f}", flush=True)
 
 
 def define_parser():
@@ -385,5 +454,5 @@ def define_parser():
 if __name__ == "__main__":
     parser = define_parser()
     args = parser.parse_args()
-    print(args)
+    print(args, flush=True)
     main(args)

@@ -22,7 +22,7 @@ def train(model, feats, label_emb, teacher_probs, labels, loss_fcn, optimizer, t
             batch_label_emb = label_emb[batch].to(device)
         else:
             batch_label_emb = None
-        
+
         if (args.model in ["sagn", "plain_sagn"]) and (not args.avoid_features):
             out, _ = model(batch_feats, batch_label_emb)
         else:
@@ -86,7 +86,12 @@ def test(model, feats, label_emb, teacher_probs, labels, loss_fcn, val_loader, t
     # Concat mini-batch prediction results along node dimension
     preds = torch.cat(preds, dim=0)
     end = time.time()
-    train_res = evaluator(preds[:len(train_nid)], labels[train_nid])
-    val_res = evaluator(preds[len(train_nid):(len(train_nid)+len(val_nid))], labels[val_nid])
-    test_res = evaluator(preds[(len(train_nid)+len(val_nid)):], labels[test_nid])
+    if evaluator != None:
+        train_res = evaluator(preds[:len(train_nid)], labels[train_nid])
+        val_res = evaluator(preds[len(train_nid):(len(train_nid)+len(val_nid))], labels[val_nid])
+        test_res = evaluator(preds[(len(train_nid)+len(val_nid)):], labels[test_nid])
+    else:
+        train_res = (preds[:len(train_nid)] == labels[train_nid]).sum().item() / len(train_nid)
+        val_res = (preds[len(train_nid):(len(train_nid)+len(val_nid))] == labels[val_nid]).sum().item() / len(val_nid)
+        test_res = 0.
     return train_res, val_res, test_res, val_loss, end - start

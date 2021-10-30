@@ -27,7 +27,7 @@ def neighbor_average_features_by_chunks(g, feat, args, style="all", stats=False,
     feat_size = feat.shape[1]
     chunk_size = int(math.ceil(feat_size / args.chunks))
 
-    print("Saving temporary initial feature chunks……")
+    print("Saving temporary initial feature chunks……", flush=True)
     tmp_dir = os.path.join(args.data_dir, "_".join(args.dataset.split("-")), "tmp")
     os.makedirs(tmp_dir, exist_ok=True)
     for part, i in enumerate(tqdm.tqdm(range(0, feat_size, chunk_size))):
@@ -39,7 +39,7 @@ def neighbor_average_features_by_chunks(g, feat, args, style="all", stats=False,
 
     del feat
     clear_memory(aggr_device)
-    print("Perform feature propagation by chunks……")
+    print("Perform feature propagation by chunks……", flush=True)
     for part, i in enumerate(tqdm.tqdm(range(0, feat_size, chunk_size))):
         chunk = torch.from_numpy(np.load(os.path.join(tmp_dir, f"feat_{i}.npy"))).to(aggr_device)
         out_chunk = neighbor_average_features(g, chunk, args, style=style, stats=stats, memory_efficient=memory_efficient)
@@ -50,7 +50,7 @@ def neighbor_average_features_by_chunks(g, feat, args, style="all", stats=False,
         np.save(os.path.join(tmp_dir, f"smoothed_feat_{part}.npy"), out_chunk)
     del chunk
     clear_memory(aggr_device)
-    print("Loading aggregated chunks……")
+    print("Loading aggregated chunks……", flush=True)
     if style == "all":
         out_feat = [torch.empty_like(feat, device=aggr_device) for k in range(args.K+1)]
     else:
@@ -62,7 +62,7 @@ def neighbor_average_features_by_chunks(g, feat, args, style="all", stats=False,
                 out_feat[k][:, i: min(i+chunk_size, feat_size)] = out_chunk[k]
         else:
             out_feat[:, i: min(i+chunk_size, feat_size)] = out_chunk
-    print("Removing temporary files……")
+    print("Removing temporary files……", flush=True)
     for part, i in enumerate(tqdm.tqdm(range(0, feat_size, chunk_size))):
         # os.remove(os.path.join(tmp_dir, f"feat_{i}.pt"))
         os.remove(os.path.join(tmp_dir, f"smoothed_feat_{part}.pt"))
@@ -75,7 +75,7 @@ def neighbor_average_features(g, feat, args, style="all", stats=True, memory_eff
     """
     Compute multi-hop neighbor-averaged node features
     """
-    print("Compute neighbor-averaged feats", style)
+    print("Compute neighbor-averaged feats", style, flush=True)
 
     aggr_device = torch.device("cpu" if args.aggr_gpu < 0 else "cuda:{}".format(args.aggr_gpu))
     g = g.to(aggr_device)
@@ -145,7 +145,7 @@ def neighbor_average_features(g, feat, args, style="all", stats=True, memory_eff
         if stats:
             feat_0 = feat.clone()
             train_mask = g.ndata["train_mask"]
-            print(f"hop 0: outer distance {outer_distance(feat_0, feat_0, train_mask):.4f}, inner distance {inner_distance(feat_0, train_mask):.4f}")
+            print(f"hop 0: outer distance {outer_distance(feat_0, feat_0, train_mask):.4f}, inner distance {inner_distance(feat_0, train_mask):.4f}", flush=True)
         if style == "ppnp":
             init_feat = feat
         if args.use_norm:
@@ -174,7 +174,7 @@ def neighbor_average_features(g, feat, args, style="all", stats=True, memory_eff
             if style == "ppnp":
                 feat = 0.5 * feat + 0.5 * init_feat
             if stats:
-                print(f"hop {hop}: outer distance {outer_distance(feat_0, feat, train_mask):.4f}, inner distance {inner_distance(feat, train_mask):.4f}")
+                print(f"hop {hop}: outer distance {outer_distance(feat_0, feat, train_mask):.4f}, inner distance {inner_distance(feat, train_mask):.4f}", flush=True)
 
         res = feat[idx].clone()
         del feat
@@ -296,7 +296,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
         homo_g.ndata["target_mask"] = homo_g.ndata[dgl.NTYPE] == target_type_id
         in_feats = g.ndata['feat']['paper'].shape[1]
         # n_classes = (labels.max() + 1).item() if labels.dim() == 1 else labels.size(1)
-        print("in_feats:", in_feats)
+        print("in_feats:", in_feats, flush=True)
         feat = g.ndata['feat']['paper']
     else:
         train_mask = torch.BoolTensor(np.isin(np.arange(len(labels)), train_nid))
@@ -304,7 +304,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
 
         in_feats = g.ndata['feat'].shape[1]
         # n_classes = (labels.max() + 1).item() if labels.dim() == 1 else labels.size(1)
-        print("in_feats:", in_feats)
+        print("in_feats:", in_feats, flush=True)
         feat = g.ndata.pop('feat')
 
     if stage > 0:
@@ -315,8 +315,8 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
         if args.dataset in ['yelp', 'ppi', 'ppi_large']:
             threshold = - threshold * np.log(threshold) - (1-threshold) * np.log(1-threshold)
             entropy_distribution = entropy(teacher_probs)
-            print(threshold)
-            print(entropy_distribution.mean(1).max().item())
+            print(threshold, flush=True)
+            print(entropy_distribution.mean(1).max().item(), flush=True)
 
             confident_nid_inner = torch.arange(len(teacher_probs))[(entropy_distribution.mean(1) <= threshold)]
         else:
@@ -335,7 +335,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
         extra_confident_nid_inner = confident_nid_inner[confident_nid_inner >= len(train_nid)]
         confident_nid = tr_va_te_nid[confident_nid_inner]
         extra_confident_nid = tr_va_te_nid[extra_confident_nid_inner]
-        print(f"pseudo label number: {len(confident_nid)}")
+        print(f"pseudo label number: {len(confident_nid)}", flush=True)
         if args.dataset in ["yelp", "ppi", "ppi_large"]:
             pseudo_labels = teacher_probs
             # pseudo_labels[entropy_distribution > threshold] = 0.5
@@ -346,7 +346,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
             pseudo_labels = torch.argmax(teacher_probs, dim=1).to(labels.device)
             labels_with_pseudos = torch.zeros_like(labels)
         train_nid_with_pseudos = np.union1d(train_nid, confident_nid)
-        print(f"enhanced train set number: {len(train_nid_with_pseudos)}")
+        print(f"enhanced train set number: {len(train_nid_with_pseudos)}", flush=True)
         labels_with_pseudos[train_nid] = labels[train_nid]
         labels_with_pseudos[extra_confident_nid] = pseudo_labels[extra_confident_nid_inner]
         # if args.dataset in ["yelp", "ppi", "ppi_large"]:
@@ -362,7 +362,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
         train_nid_with_pseudos = train_nid
 
     if args.use_labels & ((not args.inductive) or stage > 0):
-        print("using label information")
+        print("using label information", flush=True)
         if args.dataset in ["yelp", "ppi", "ppi_large"]:
             label_emb = 0.5 * torch.ones([feat.shape[0], n_classes]).to(labels.device)
             # label_emb = labels_with_pseudos.mean(0).repeat([feat.shape[0], 1])
@@ -390,12 +390,12 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
 
     if args.inductive:
         # This setting is not compatible with ogbn-mag!
-        print("Inductive setting detected")
+        print("Inductive setting detected", flush=True)
         if os.path.exists(os.path.join("../subgraphs", args.dataset, "subgraph_train.pt")):
-            print("Load train subgraph")
+            print("Load train subgraph", flush=True)
             g_train = torch.load(os.path.join("../subgraphs", args.dataset, "subgraph_train.pt")).to(g.device)
         else:
-            print("Extract train subgraph")
+            print("Extract train subgraph", flush=True)
             g_train = dgl.node_subgraph(g, train_nid.to(g.device))
             if not os.path.exists(os.path.join("../subgraphs", args.dataset)):
                 os.makedirs(os.path.join("../subgraphs", args.dataset))
@@ -417,7 +417,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
                 feats[train_mask] = feats_train
             if load_embs:
                 if not os.path.exists(emb_path):
-                    print("saving smoothed node features to " + emb_path)
+                    print("saving smoothed node features to " + emb_path, flush=True)
                     torch.save(feats, emb_path)
                 del feats, feat
                 clear_memory(device)
@@ -467,7 +467,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
                 label_emb[train_mask] = label_emb_train
             if load_label_emb:
                 if not os.path.exists(label_emb_path):
-                    print("saving initial label embeddings to " + label_emb_path)
+                    print("saving initial label embeddings to " + label_emb_path, flush=True)
                     torch.save(label_emb, label_emb_path)
                 del label_emb
                 clear_memory(device)
@@ -483,7 +483,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
                                                                 style=label_averaging_style,
                                                                 stats=args.dataset not in ["ogbn-mag", "ogbn-papers100M"],
                                                                 memory_efficient=args.memory_efficient,
-                                                                target_nid=tr_va_te_nid if args.dataset == "ogbn-papers100M" else None)
+                                                                target_nid=tr_va_te_nid if (args.dataset == "ogbn-papers100M" or args.dataset == "maxp") else None)
                 if args.dataset == "ogbn-mag":
                     del homo_g
                     clear_memory(device)
@@ -491,7 +491,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
                 #     label_emb = label_emb[tr_va_te_nid]
             if load_label_emb and stage == 0:
                 if (not os.path.exists(label_emb_path)):
-                    print("saving initial label embeddings to " + label_emb_path)
+                    print("saving initial label embeddings to " + label_emb_path, flush=True)
                     torch.save(label_emb, label_emb_path)
                 del label_emb
                 clear_memory(device)
@@ -502,7 +502,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
             if args.dataset == "ogbn-mag":
                 feats = {("raw",): [feat]}
                 for rel_subset in subset_list:
-                    print(f"Preprocessing subgraph of {rel_subset}...")
+                    print(f"Preprocessing subgraph of {rel_subset}...", flush=True)
                     feats[rel_subset] = gen_rel_subset_feature(g, rel_subset, args, aggr_device)
             else:
                 feats = neighbor_average_features_by_chunks(g, feat, args,
@@ -515,7 +515,7 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
             #     feats = [feat[tr_va_te_nid] for feat in feats]
             if load_embs:
                 if not os.path.exists(emb_path):
-                    print("saving smoothed node features to " + emb_path)
+                    print("saving smoothed node features to " + emb_path, flush=True)
                     torch.save(feats, emb_path)
                 del feats, feat
                 clear_memory(device)
@@ -529,10 +529,10 @@ def prepare_data(device, args, probs_path, stage=0, load_embs=False, load_label_
     # if "load" is set true and they have not been saved
 
     if load_embs:
-        print("load saved embeddings")
+        print("load saved embeddings", flush=True)
         feats = torch.load(emb_path)
     if load_label_emb and (stage == 0):
-        print("load saved label embedding")
+        print("load saved label embedding", flush=True)
         label_emb = torch.load(label_emb_path)
 
     # label_emb = (label_emb - label_emb.mean(0)) / label_emb.std(0)

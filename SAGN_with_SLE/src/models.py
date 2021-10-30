@@ -46,6 +46,8 @@ class SIGN(nn.Module):
 
 ################################################################
 # SAGN model
+
+
 class SAGN(nn.Module):
     def __init__(self, in_feats, hidden, out_feats, num_hops, n_layers, num_heads, weight_style="attention", alpha=0.5, focal="first",
                  hop_norm="softmax", dropout=0.5, input_drop=0.0, attn_drop=0.0, negative_slope=0.2, zero_inits=False, position_emb=False):
@@ -66,17 +68,17 @@ class SAGN(nn.Module):
         self.input_drop = nn.Dropout(input_drop)
         self.multihop_encoders = nn.ModuleList([GroupMLP(in_feats, hidden, hidden, num_heads, n_layers, dropout) for i in range(num_hops)])
         self.res_fc = nn.Linear(in_feats, hidden * num_heads, bias=False)
-        
+
         if weight_style == "attention":
             self.hop_attn_l = nn.Parameter(torch.FloatTensor(size=(1, num_heads, hidden)))
             self.hop_attn_r = nn.Parameter(torch.FloatTensor(size=(1, num_heads, hidden)))
             self.leaky_relu = nn.LeakyReLU(negative_slope)
-        
+
         if position_emb:
             self.pos_emb = nn.Parameter(torch.FloatTensor(size=(num_hops, in_feats)))
         else:
             self.pos_emb = None
-        
+
         self.post_encoder = GroupMLP(hidden, hidden, out_feats, num_heads, n_layers, dropout)
         # self.reset_parameters()
 
@@ -101,11 +103,11 @@ class SAGN(nn.Module):
         out = 0
         feats = [self.input_drop(feat) for feat in feats]
         if self.pos_emb is not None:
-            feats = [f +self.pos_emb[[i]] for i, f in enumerate(feats)]
+            feats = [f + self.pos_emb[[i]] for i, f in enumerate(feats)]
         hidden = []
         for i in range(len(feats)):
             hidden.append(self.multihop_encoders[i](feats[i]).view(-1, self._num_heads, self._hidden))
-        
+
         a = None
         if self._weight_style == "attention":
             if self._focal == "first":
@@ -117,7 +119,7 @@ class SAGN(nn.Module):
                 for h in hidden:
                     focal_feat += h
                 focal_feat /= len(hidden)
-                
+
             astack_l = [(h * self.hop_attn_l).sum(dim=-1).unsqueeze(-1) for h in hidden]
             a_r = (focal_feat * self.hop_attn_r).sum(dim=-1).unsqueeze(-1)
             astack = torch.stack([(a_l + a_r) for a_l in astack_l], dim=-1)
@@ -129,14 +131,14 @@ class SAGN(nn.Module):
             if self._hop_norm == "tanh":
                 a = torch.tanh(astack)
             a = self.attn_dropout(a)
-            
+
             for i in range(a.shape[-1]):
                 out += hidden[i] * a[:, :, :, i]
 
         if self._weight_style == "uniform":
             for h in hidden:
                 out += h / len(hidden)
-        
+
         if self._weight_style == "exponent":
             for k, h in enumerate(hidden):
                 out += self._alpha ** k * h
@@ -147,10 +149,12 @@ class SAGN(nn.Module):
         out = out.view(-1, self._num_heads, self._hidden)
         out = self.post_encoder(out)
         out = out.mean(1)
-        
+
         return out, a.mean(1) if a is not None else None
 
 # a simplified version of SAGN
+
+
 class PlainSAGN(nn.Module):
     def __init__(self, in_feats, hidden, out_feats, n_layers, num_heads, residual=True, pre_norm=False, hop_norm="softmax",
                  dropout=0.5, input_drop=0.0, attn_drop=0.0, negative_slope=0.2, zero_inits=False):
@@ -203,7 +207,7 @@ class PlainSAGN(nn.Module):
         # a_0 = (hidden[0] * self.hop_attn_0).sum(dim=-1)
         # a_K = (hidden[-1] * self.hop_attn_K).sum(dim=-1)
         astack = torch.stack([a for a in astack], dim=-1)
-        
+
         if self._hop_norm == "softmax":
             a = self.leaky_relu(astack)
             a = F.softmax(a, dim=-1)
@@ -213,7 +217,7 @@ class PlainSAGN(nn.Module):
             a = torch.tanh(a)
 
         a = self.attn_dropout(a)
-        
+
         for i in range(a.shape[-1]):
             out += hidden[i] * a[:, :, [i]]
         out = out.flatten(1, -1)
@@ -226,15 +230,17 @@ class PlainSAGN(nn.Module):
 
 ################################################################
 # NARS aggregator across subgraphs
+
+
 class WeightedAggregator(nn.Module):
     def __init__(self, subset_list, in_feats, num_hops):
         super(WeightedAggregator, self).__init__()
         self.num_hops = num_hops
-        self.subset_list =subset_list
+        self.subset_list = subset_list
         self.agg_feats = nn.ParameterList()
         for _ in range(num_hops):
             self.agg_feats.append(nn.Parameter(torch.FloatTensor(len(subset_list), in_feats)))
-            
+
     def reset_parameters(self):
         gain = nn.init.calculate_gain("relu")
         for weight in self.agg_feats:
@@ -250,13 +256,15 @@ class WeightedAggregator(nn.Module):
 
 # NARS model wrapper with homogeneous model (MLP, SIGN, SAGN...) as input
 # This can also be used as the base model in SLEModel
+
+
 class NARS(nn.Module):
     def __init__(self, in_feats, num_hops, homo_model, subset_list):
         super(NARS, self).__init__()
         self.aggregator = WeightedAggregator(subset_list, in_feats, num_hops)
         self.clf = homo_model
         self.reset_parameters()
-    
+
     def reset_parameters(self):
         self.aggregator.reset_parameters()
         self.clf.reset_parameters()
@@ -268,6 +276,8 @@ class NARS(nn.Module):
 
 ################################################################
 # Enhanced model with a label model in SLE
+
+
 class SLEModel(nn.Module):
     def __init__(self, base_model, label_model, reproduce_previous=True):
         super().__init__()
@@ -286,7 +296,7 @@ class SLEModel(nn.Module):
                 self.label_model.reset_parameters()
 
     def previous_reset_parameters(self):
-        # To ensure the reproducibility of results from 
+        # To ensure the reproducibility of results from
         # previous (before clean up) version, we reserve
         # the old order of initialization.
         gain = nn.init.calculate_gain("relu")
@@ -313,7 +323,7 @@ class SLEModel(nn.Module):
                 self.base_model.post_encoder.reset_parameters()
             if hasattr(self.base_model, "bn"):
                 self.base_model.bn.reset_parameters()
-                    
+
         else:
             if self.label_model is not None:
                 self.label_model.reset_parameters()
@@ -356,6 +366,7 @@ class LabelPropagation(nn.Module):
             'DA': D^-1 * A
             'AD': A * D^-1
     """
+
     def __init__(self, num_layers, alpha, adj='DAD', display=False):
         super(LabelPropagation, self).__init__()
 
@@ -363,18 +374,18 @@ class LabelPropagation(nn.Module):
         self.alpha = alpha
         self.adj = adj
         self.display = display
-    
+
     @torch.no_grad()
     def forward(self, g, labels, mask=None, post_step=lambda y: y.clamp_(0., 1.)):
         with g.local_scope():
             if labels.dtype == torch.long:
                 labels = F.one_hot(labels.view(-1)).to(torch.float32)
-            
+
             y = labels
             if mask is not None:
                 y = torch.zeros_like(labels)
                 y[mask] = labels[mask]
-            
+
             last = (1 - self.alpha) * y
             degs = g.in_degrees().float().clamp(min=1)
             norm = torch.pow(degs, -0.5 if self.adj == 'DAD' else -1).to(labels.device).unsqueeze(1)
@@ -383,16 +394,16 @@ class LabelPropagation(nn.Module):
                 # Assume the graphs to be undirected
                 if self.adj in ['DAD', 'AD']:
                     y = norm * y
-                
+
                 g.ndata['h'] = y
                 g.update_all(fn.copy_u('h', 'm'), fn.sum('m', 'h'))
                 y = self.alpha * g.ndata.pop('h')
 
                 if self.adj in ['DAD', 'DA']:
                     y = y * norm
-                
+
                 y = post_step(last + y)
-            
+
             return y
 
 
@@ -424,6 +435,7 @@ class CorrectAndSmooth(nn.Module):
         scale: float, optional
             The scaling factor :math:`\sigma`, in case :obj:`autoscale = False`. Default is 1.
     """
+
     def __init__(self,
                  num_correction_layers,
                  correction_alpha,
@@ -434,7 +446,7 @@ class CorrectAndSmooth(nn.Module):
                  autoscale=True,
                  scale=1.):
         super(CorrectAndSmooth, self).__init__()
-        
+
         self.autoscale = autoscale
         self.scale = scale
 
@@ -457,7 +469,7 @@ class CorrectAndSmooth(nn.Module):
 
             if y_true.dtype == torch.long:
                 y_true = F.one_hot(y_true.view(-1), y_soft.size(-1)).to(y_soft.dtype)
-            
+
             error = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
             error[train_nid] = y_true - y_soft[:len(train_nid)]
             y_all = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
@@ -476,7 +488,7 @@ class CorrectAndSmooth(nn.Module):
                 def fix_input(x):
                     x[train_nid] = error[train_nid]
                     return x
-                
+
                 smoothed_error = self.prop1(g, error, post_step=fix_input)
 
                 result = y_all + self.scale * smoothed_error[torch.cat([train_nid, val_nid, test_nid], dim=0)]
@@ -490,19 +502,19 @@ class CorrectAndSmooth(nn.Module):
 
             if len(y_true.shape) == 1 or y_true.shape[1] == 1:
                 y_true = F.one_hot(y_true.view(-1), y_soft.size(-1)).to(y_soft.dtype)
-            
+
             y_all = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
             y_all[torch.cat([train_nid, val_nid, test_nid], dim=0)] = y_soft
             y_all[train_nid] = y_true
-            
+
             return self.prop2(g, y_all)[torch.cat([train_nid, val_nid, test_nid], dim=0)]
 
     def forward(self, g, y_soft, y_true, operations, train_nid, val_nid, test_nid, n_nodes):
         for operation in operations:
             if operation == "correction":
-                print("Performing correction...")
+                print("Performing correction...", flush=True)
                 y_soft = self.correct(g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes)
             if operation == "smoothing":
-                print("Performing smoothing...")
+                print("Performing smoothing...", flush=True)
                 y_soft = self.smooth(g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes)
         return y_soft

@@ -17,6 +17,11 @@ Run shell scripts on folder `scripts`, add device number to indicate GPU:
 
 `bash scripts/{dataset}/{method} {device_id}`
 
+```bash
+cd scripts/maxp
+nohup bash train_maxp_sagn_use_label.sh > ../../outputs/train.log 2>&1 &
+```
+
 ## Results
 Test F1-micro with means and standard deviations under 10 runs. We use reported metrics for baselines.
 | Method | Reddit | Flickr |  PPI | Yelp |

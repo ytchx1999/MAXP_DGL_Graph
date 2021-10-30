@@ -136,7 +136,7 @@ def calculate_customized_homophily(g, labels, K, multilabels=False):
 
 
 def read_subset_list(name, dir):
-    print("Reading Relation Subsets:")
+    print("Reading Relation Subsets:", flush=True)
     if name == "ogbn-mag":
         name = "mag"
     fname = os.path.join(dir, name)
@@ -146,13 +146,13 @@ def read_subset_list(name, dir):
         for line in f:
             relations = tuple(line.strip().split(','))
             rel_subsets.append(relations)
-            print(relations)
+            print(relations, flush=True)
     return rel_subsets
 
 
 def generate_subset_list(g, num_subsets, target_ntype="paper"):
     edges = {e: (u, v) for u, v, e in g.metagraph().edges}
-    print(edges)
+    print(edges, flush=True)
     all_relations = list(edges.keys())
     subset_list = []
     while len(subset_list) < num_subsets:

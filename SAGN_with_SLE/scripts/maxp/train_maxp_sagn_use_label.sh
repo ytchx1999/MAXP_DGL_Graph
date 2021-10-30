@@ -18,17 +18,14 @@ python -u ../../src/sagn.py \
 --load-label-emb \
 --seed 0 \
 --num-runs 1 \
---threshold 0.5 \
---epoch-setting 100 100 100 100 \
+--threshold 0.9 \
+--epoch-setting 500 200 200 \
 --lr 0.001 \
---batch-size 5000 \
---num-hidden 1024 \
+--batch-size 50000 \
+--num-hidden 512 \
 --dropout 0.5 \
---attn-drop 0. \
---input-drop 0.0 \
+--attn-drop 0.4 \
+--input-drop 0.2 \
 --label-drop 0.5 \
---K 3 \
+--K 5 \
 --label-K 9 \
---use-labels \
---weight-decay 0 \
---warmup-stage -1

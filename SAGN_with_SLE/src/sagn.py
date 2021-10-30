@@ -371,17 +371,17 @@ def main(args):
     # print(total_train_times)
     # print(total_inference_times)
 
-    for stage in range(len(args.epoch_setting)):
-        print(f"Stage: {stage}, Val accuracy: {np.mean(total_best_val_accs[:, stage]):.4f}±"
-              f"{np.std(total_best_val_accs[:, stage]):.4f}", flush=True)
-        print(f"Stage: {stage}, Test accuracy: {np.mean(total_best_test_accs[:, stage]):.4f}±"
-              f"{np.std(total_best_test_accs[:, stage]):.4f}", flush=True)
-        print(f"Stage: {stage}, Preprocessing time: {np.mean(total_preprocessing_times[:, stage]):.4f}±"
-              f"{np.std(total_preprocessing_times[:, stage]):.4f}", flush=True)
-        print(f"Stage: {stage}, Training time: {np.hstack(total_train_times[:, stage]).mean():.4f}±"
-              f"{np.hstack(total_train_times[:, stage]).std():.4f}", flush=True)
-        print(f"Stage: {stage}, Inference time: {np.hstack(total_inference_times[:, stage]).mean():.4f}±"
-              f"{np.hstack(total_inference_times[:, stage]).std():.4f}", flush=True)
+    # for stage in range(len(args.epoch_setting)):
+    #     print(f"Stage: {stage}, Val accuracy: {np.mean(total_best_val_accs[:, stage]):.4f}±"
+    #           f"{np.std(total_best_val_accs[:, stage]):.4f}", flush=True)
+    #     print(f"Stage: {stage}, Test accuracy: {np.mean(total_best_test_accs[:, stage]):.4f}±"
+    #           f"{np.std(total_best_test_accs[:, stage]):.4f}", flush=True)
+    #     print(f"Stage: {stage}, Preprocessing time: {np.mean(total_preprocessing_times[:, stage]):.4f}±"
+    #           f"{np.std(total_preprocessing_times[:, stage]):.4f}", flush=True)
+    #     print(f"Stage: {stage}, Training time: {np.hstack(total_train_times[:, stage]).mean():.4f}±"
+    #           f"{np.hstack(total_train_times[:, stage]).std():.4f}", flush=True)
+    #     print(f"Stage: {stage}, Inference time: {np.hstack(total_inference_times[:, stage]).mean():.4f}±"
+    #           f"{np.hstack(total_inference_times[:, stage]).std():.4f}", flush=True)
 
 
 def define_parser():

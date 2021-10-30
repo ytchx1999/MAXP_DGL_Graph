@@ -19,7 +19,7 @@ Run shell scripts on folder `scripts`, add device number to indicate GPU:
 
 ```bash
 cd scripts/maxp
-nohup bash train_maxp_sagn_use_label.sh > ../../outputs/train.log 2>&1 &
+nohup bash train_maxp_sagn_use_label.sh > ../../outputs/sagn.log 2>&1 &
 ```
 
 ## Results

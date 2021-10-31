@@ -26,8 +26,8 @@ python -u ../../src/sagn.py \
 --input-drop 0.2 \
 --label-drop 0.5 \
 --K 5 \
---all-train \
---label-K 14 \
---use-labels \
+--all-train
+# --label-K 14 \
+# --use-labels \
 # --load-embs \
 # --load-label-emb \

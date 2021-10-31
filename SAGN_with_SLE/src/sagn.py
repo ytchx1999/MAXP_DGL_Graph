@@ -30,14 +30,26 @@ def run(args, data, device, stage=0, subset_list=None):
     feats, label_emb, teacher_probs, labels, labels_with_pseudos, in_feats, n_classes, \
         train_nid, train_nid_with_pseudos, val_nid, test_nid, evaluator, _ = data
 
+    if args.all_train:
+        train_nid = torch.cat([train_nid, val_nid], dim=0)
+
     # train_nid_raw = train_nid.clone().to(device)
     # val_nid_raw = val_nid.clone().to(device)
     # test_nid_raw = test_nid.clone().to(device)
     if args.dataset == "ogbn-papers100M" or args.dataset == "maxp":
         # We only store test/val/test nodes' features for ogbn-papers100M
-        labels = labels[torch.cat([train_nid, val_nid, test_nid], dim=0)]
-        labels_with_pseudos = labels_with_pseudos[torch.cat([train_nid, val_nid, test_nid], dim=0)]
-        id_map = dict(zip(torch.cat([train_nid, val_nid, test_nid], dim=0).cpu().long().numpy(), np.arange(len(train_nid) + len(val_nid) + len(test_nid))))
+        if args.all_train:
+            labels = labels[torch.cat([train_nid, test_nid], dim=0)]
+        else:
+            labels = labels[torch.cat([train_nid, val_nid, test_nid], dim=0)]
+        if args.all_train:
+            labels_with_pseudos = labels_with_pseudos[torch.cat([train_nid, test_nid], dim=0)]
+        else:
+            labels_with_pseudos = labels_with_pseudos[torch.cat([train_nid, val_nid, test_nid], dim=0)]
+        if args.all_train:
+            id_map = dict(zip(torch.cat([train_nid, test_nid], dim=0).cpu().long().numpy(), np.arange(len(train_nid) + len(test_nid))))
+        else:
+            id_map = dict(zip(torch.cat([train_nid, val_nid, test_nid], dim=0).cpu().long().numpy(), np.arange(len(train_nid) + len(val_nid) + len(test_nid))))
         # rev_id_map = dict(zip(np.arange(len(train_nid) + len(val_nid) + len(test_nid)), torch.cat([train_nid, val_nid, test_nid], dim=0).cpu().long().numpy()))
         def map_func(x): return torch.from_numpy(np.array([id_map[a] for a in x.cpu().numpy()])).to(device)
         # def rev_map_func(x): return torch.from_numpy(np.array([id_map[a] for a in x.cpu().numpy()])).to(device)
@@ -56,9 +68,14 @@ def run(args, data, device, stage=0, subset_list=None):
         val_nid, batch_size=args.eval_batch_size,
         shuffle=False, drop_last=False)
     # Test set loader
-    test_loader = torch.utils.data.DataLoader(
-        torch.cat([train_nid, val_nid, test_nid], dim=0), batch_size=args.eval_batch_size,
-        shuffle=False, drop_last=False)
+    if args.all_train:
+        test_loader = torch.utils.data.DataLoader(
+            torch.cat([train_nid, test_nid], dim=0), batch_size=args.eval_batch_size,
+            shuffle=False, drop_last=False)
+    else:
+        test_loader = torch.utils.data.DataLoader(
+            torch.cat([train_nid, val_nid, test_nid], dim=0), batch_size=args.eval_batch_size,
+            shuffle=False, drop_last=False)
     # All nodes loader (including nodes without labels)
     all_loader = torch.utils.data.DataLoader(
         torch.arange(len(labels)), batch_size=args.eval_batch_size,
@@ -448,6 +465,7 @@ def define_parser():
     parser.add_argument("--fixed-subsets", action="store_true")
     parser.add_argument("--emb-path", type=str, default="/home/scx/NARS/")
     parser.add_argument("--probs_dir", type=str, default="../intermediate_outputs")
+    parser.add_argument("--all-train", action="store_true")
     return parser
 
 

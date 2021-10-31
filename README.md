@@ -41,6 +41,9 @@ tail -f ../outputs/node2vec.log
 ```
 结果保存在`../dataset/emb.pt`中。
 
+## SAGN模型
+进入SAGN_with_SLE文件夹，按照指示进行运行。
+
 
 ### 运行GNN模型并保存test结果
 对于GNN的模型，需要先cd到gnn目录，然后运行：
@@ -96,6 +99,9 @@ ogbn-papers100M进行训练并保存model参数。
 cd ogb/
 # then run gnn in backward
 nohup python3 model_train.py --GPU 0 --ogb --all_train > ../outputs/ogb.log 2>&1 &
+# run model in this dataset
+cd ../gnn/
+nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
 ```
 
 ---
@@ -162,10 +168,14 @@ nohup python3 model_train.py --GPU 0 --ogb --all_train > ../outputs/ogb.log 2>&1
 │   ├── labels.pkl
 │   ├── link_phase1.csv
 │   ├── sample_submission_for_validation.csv
+│   ├── sgc_emb.pt
 │   ├── test_id_dict.pkl
 │   ├── train_nodes.csv
+│   ├── use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
 │   ├── validation_nodes.csv
-│   └── y_soft.pt
+│   ├── y_soft_conv.pt
+│   ├── y_soft.pt
+│   └── y_soft_sage.pt
 ├── gnn
 │   ├── csv_idx_map.py
 │   ├── flag.py
@@ -192,9 +202,42 @@ nohup python3 model_train.py --GPU 0 --ogb --all_train > ../outputs/ogb.log 2>&1
 │   │   ├── model.cpython-37.pyc
 │   │   └── utils.cpython-37.pyc
 │   └── utils.py
+├── ogb
+│   ├── csv_idx_map.py
+│   ├── flag.py
+│   ├── __init__.py
+│   ├── models.py
+│   ├── model_train.py
+│   ├── model_utils.py
+│   ├── __pycache__
+│   │   ├── models.cpython-37.pyc
+│   │   ├── model_utils.cpython-37.pyc
+│   │   └── utils.cpython-37.pyc
+│   ├── test_chx.py
+│   ├── test.ipynb
+│   └── utils.py
+├── ogbn_papers100M
+│   ├── mapping
+│   │   ├── labelidx2arxivcategeory.csv.gz
+│   │   ├── nodeidx2paperid.csv.gz
+│   │   └── README.md
+│   ├── processed
+│   │   └── dgl_data_processed
+│   ├── raw
+│   │   ├── data.npz
+│   │   └── node-label.npz
+│   ├── RELEASE_v1.txt
+│   └── split
+│       └── time
+│           ├── test.csv.gz
+│           ├── train.csv.gz
+│           └── valid.csv.gz
 ├── outputs
-│   ├── dgl_model-053714.pth
+│   ├── dgl_ogb_model-081260.pth
+│   ├── dgl_ogb_model_gat.pth
 │   ├── node2vec.log
+│   ├── ogb1.log
+│   ├── ogb.log
 │   ├── submit_2021-10-13.csv
 │   ├── submit_2021-10-14.csv
 │   ├── submit_2021-10-15.csv
@@ -204,10 +247,163 @@ nohup python3 model_train.py --GPU 0 --ogb --all_train > ../outputs/ogb.log 2>&1
 │   ├── submit_2021-10-20.csv
 │   ├── submit_cs_2021-10-20.csv
 │   ├── submit_cs_2021-10-21.csv
+│   ├── submit_cs_2021-10-22.csv
+│   ├── submit_cs_2021-10-23.csv
+│   ├── submit_cs_2021-10-24.csv
+│   ├── submit_cs_2021-10-25.csv
+│   ├── submit_cs_2021-10-26.csv
+│   ├── submit_cs_2021-10-29.csv
+│   ├── submit_sagn_2021-10-30.csv
+│   ├── submit_sagn_2021-10-31.csv
 │   ├── train1.log
 │   └── train.log
 ├── README 2.md
-└── README.md
+├── README.md
+├── requirements.txt
+├── SAGN_with_SLE
+│   ├── converge_stats
+│   │   └── ogbn-products
+│   │       └── sagn_uniform
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_0.csv
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_0.png
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_1.csv
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_1.png
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_2.csv
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_2.png
+│   │           ├── val_loss_use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_0.csv
+│   │           ├── val_loss_use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_0.png
+│   │           ├── val_loss_use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_1.csv
+│   │           ├── val_loss_use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_1.png
+│   │           ├── val_loss_use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_2.csv
+│   │           └── val_loss_use_labels_True_use_feats_True_K_5_label_K_9_seed_0_stage_2.png
+│   ├── dataset
+│   │   ├── maxp
+│   │   │   ├── embedding
+│   │   │   │   ├── smoothed_embs_K_5.pt
+│   │   │   │   └── smoothed_label_emb_K_9.pt
+│   │   │   └── tmp
+│   │   ├── ogbn_products
+│   │   │   ├── embedding
+│   │   │   ├── mapping
+│   │   │   │   ├── labelidx2productcategory.csv.gz
+│   │   │   │   ├── nodeidx2asin.csv.gz
+│   │   │   │   └── README.md
+│   │   │   ├── processed
+│   │   │   │   ├── dgl_data_processed
+│   │   │   │   ├── geometric_data_processed.pt
+│   │   │   │   ├── pre_filter.pt
+│   │   │   │   └── pre_transform.pt
+│   │   │   ├── raw
+│   │   │   │   ├── edge.csv.gz
+│   │   │   │   ├── node-feat.csv.gz
+│   │   │   │   ├── node-label.csv.gz
+│   │   │   │   ├── num-edge-list.csv.gz
+│   │   │   │   └── num-node-list.csv.gz
+│   │   │   ├── RELEASE_v1.txt
+│   │   │   ├── split
+│   │   │   │   └── sales_ranking
+│   │   │   │       ├── test.csv.gz
+│   │   │   │       ├── train.csv.gz
+│   │   │   │       └── valid.csv.gz
+│   │   │   └── tmp
+│   │   └── use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
+│   ├── intermediate_outputs
+│   │   ├── maxp
+│   │   │   └── sagn
+│   │   │       ├── use_labels_False_use_feats_True_K_3_label_K_9_probs_seed_0_stage_0.pt
+│   │   │       ├── use_labels_False_use_feats_True_K_3_label_K_9_probs_seed_0_stage_1.pt
+│   │   │       ├── use_labels_False_use_feats_True_K_3_label_K_9_probs_seed_0_stage_2.pt
+│   │   │       ├── use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_0.pt
+│   │   │       ├── use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_1.pt
+│   │   │       ├── use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
+│   │   │       ├── use_labels_True_use_feats_True_K_3_label_K_9_probs_seed_0_stage_0.pt
+│   │   │       ├── use_labels_True_use_feats_True_K_3_label_K_9_probs_seed_0_stage_1.pt
+│   │   │       ├── use_labels_True_use_feats_True_K_3_label_K_9_probs_seed_0_stage_2.pt
+│   │   │       └── use_labels_True_use_feats_True_K_3_label_K_9_probs_seed_0_stage_3.pt
+│   │   └── ogbn-products
+│   │       └── sagn_uniform
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_probs_seed_0_stage_0.pt
+│   │           ├── use_labels_True_use_feats_True_K_5_label_K_9_probs_seed_0_stage_1.pt
+│   │           └── use_labels_True_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
+│   ├── LICENSE
+│   ├── outputs
+│   │   └── sagn.log
+│   ├── README.md
+│   ├── scripts
+│   │   ├── cora
+│   │   │   └── train_cora_sagn_use_labels.sh
+│   │   ├── flickr
+│   │   │   └── train_flickr_sagn.sh
+│   │   ├── maxp
+│   │   │   └── train_maxp_sagn_use_label.sh
+│   │   ├── ogbn-mag
+│   │   │   ├── train_ogbn_mag_sagn.sh
+│   │   │   └── train_ogbn_mag_sagn_TransE.sh
+│   │   ├── ogbn-papers100M
+│   │   │   ├── train_ogbn_papers100M_sagn_no_labels.sh
+│   │   │   └── train_ogbn_papers100M_sagn_use_label.sh
+│   │   ├── ogbn-products
+│   │   │   ├── postprocess_ogbn_products_sagn_use_labels.sh
+│   │   │   ├── train_ogbn_products_mlp_no_labels.sh
+│   │   │   ├── train_ogbn_products_mlp_use_labels.sh
+│   │   │   ├── train_ogbn_products_sagn_no_features.sh
+│   │   │   ├── train_ogbn_products_sagn_no_labels.sh
+│   │   │   ├── train_ogbn_products_sagn_use_labels_morestages.sh
+│   │   │   ├── train_ogbn_products_sagn_use_labels.sh
+│   │   │   ├── train_ogbn_products_sign_no_labels.sh
+│   │   │   ├── train_ogbn_products_sign_use_labels.sh
+│   │   │   ├── train_ogbn_products_simple_sagn_exponent_no_labels.sh
+│   │   │   ├── train_ogbn_products_simple_sagn_exponent_use_labels.sh
+│   │   │   ├── train_ogbn_products_simple_sagn_uniform_no_labels.sh
+│   │   │   └── train_ogbn_products_simple_sagn_uniform_use_labels.sh
+│   │   ├── ppi
+│   │   │   └── train_ppi_sagn.sh
+│   │   ├── ppi_large
+│   │   │   └── train_ppi_large_sagn.sh
+│   │   ├── reddit
+│   │   │   └── train_reddit_sagn.sh
+│   │   └── yelp
+│   │       └── train_yelp_sagn.sh
+│   └── src
+│       ├── dataset.py
+│       ├── gen_models.py
+│       ├── layers.py
+│       ├── models.py
+│       ├── post_process.py
+│       ├── pre_process.py
+│       ├── __pycache__
+│       │   ├── dataset.cpython-37.pyc
+│       │   ├── gen_models.cpython-37.pyc
+│       │   ├── layers.cpython-37.pyc
+│       │   ├── models.cpython-37.pyc
+│       │   ├── pre_process.cpython-37.pyc
+│       │   ├── train_process.cpython-37.pyc
+│       │   └── utils.cpython-37.pyc
+│       ├── sagn.py
+│       ├── train_process.py
+│       └── utils.py
+├── self-kd
+│   ├── loss.py
+│   ├── models.py
+│   ├── model_utils.py
+│   ├── train_kd.py
+│   └── utils.py
+├── sgc
+│   ├── main.py
+│   ├── __pycache__
+│   │   └── utils.cpython-37.pyc
+│   └── utils.py
+├── tmp
+│   ├── emb.pt
+│   ├── y_soft_conv.pt
+│   ├── y_soft.pt
+│   └── y_soft_sage.pt
+├── tmp2
+│   └── y_soft.pt
+├── tmp3
+│   └── y_soft.pt
+└── tmp-pretrain
+    └── y_soft.pt
 
-8 directories, 56 files
+58 directories, 196 files
 ```

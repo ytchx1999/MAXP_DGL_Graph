@@ -91,7 +91,12 @@ def test(model, feats, label_emb, teacher_probs, labels, loss_fcn, val_loader, t
         val_res = evaluator(preds[len(train_nid):(len(train_nid)+len(val_nid))], labels[val_nid])
         test_res = evaluator(preds[(len(train_nid)+len(val_nid)):], labels[test_nid])
     else:
-        train_res = (preds[:len(train_nid)] == labels[train_nid]).sum().item() / len(train_nid)
-        val_res = (preds[len(train_nid):(len(train_nid)+len(val_nid))] == labels[val_nid]).sum().item() / len(val_nid)
-        test_res = 0.
+        if args.all_train:
+            train_res = (preds[:len(train_nid)] == labels[train_nid]).sum().item() / len(train_nid)
+            val_res = (preds[len(train_nid)-len(val_nid):(len(train_nid))] == labels[val_nid]).sum().item() / len(val_nid)
+            test_res = 0.
+        else:
+            train_res = (preds[:len(train_nid)] == labels[train_nid]).sum().item() / len(train_nid)
+            val_res = (preds[len(train_nid):(len(train_nid)+len(val_nid))] == labels[val_nid]).sum().item() / len(val_nid)
+            test_res = 0.
     return train_res, val_res, test_res, val_loss, end - start

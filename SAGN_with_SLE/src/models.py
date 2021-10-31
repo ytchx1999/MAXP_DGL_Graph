@@ -346,6 +346,180 @@ class SLEModel(nn.Module):
 ################################################################
 # DGL's implementation of Correct&Smooth (C&S)
 
+# class LabelPropagation(nn.Module):
+#     r"""
+#     Description
+#     -----------
+#     Introduced in `Learning from Labeled and Unlabeled Data with Label Propagation <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.3864&rep=rep1&type=pdf>`_
+#     .. math::
+#         \mathbf{Y}^{\prime} = \alpha \cdot \mathbf{D}^{-1/2} \mathbf{A}
+#         \mathbf{D}^{-1/2} \mathbf{Y} + (1 - \alpha) \mathbf{Y},
+#     where unlabeled data is inferred by labeled data via propagation.
+#     Parameters
+#     ----------
+#         num_layers: int
+#             The number of propagations.
+#         alpha: float
+#             The :math:`\alpha` coefficient.
+#         adj: str
+#             'DAD': D^-0.5 * A * D^-0.5
+#             'DA': D^-1 * A
+#             'AD': A * D^-1
+#     """
+
+#     def __init__(self, num_layers, alpha, adj='DAD', display=False):
+#         super(LabelPropagation, self).__init__()
+
+#         self.num_layers = num_layers
+#         self.alpha = alpha
+#         self.adj = adj
+#         self.display = display
+
+#     @torch.no_grad()
+#     def forward(self, g, labels, mask=None, post_step=lambda y: y.clamp_(0., 1.)):
+#         with g.local_scope():
+#             if labels.dtype == torch.long:
+#                 labels = F.one_hot(labels.view(-1)).to(torch.float32)
+
+#             y = labels
+#             if mask is not None:
+#                 y = torch.zeros_like(labels)
+#                 y[mask] = labels[mask]
+
+#             last = (1 - self.alpha) * y
+#             degs = g.in_degrees().float().clamp(min=1)
+#             norm = torch.pow(degs, -0.5 if self.adj == 'DAD' else -1).to(labels.device).unsqueeze(1)
+
+#             for _ in tqdm(range(self.num_layers)) if self.display else range(self.num_layers):
+#                 # Assume the graphs to be undirected
+#                 if self.adj in ['DAD', 'AD']:
+#                     y = norm * y
+
+#                 g.ndata['h'] = y
+#                 g.update_all(fn.copy_u('h', 'm'), fn.sum('m', 'h'))
+#                 y = self.alpha * g.ndata.pop('h')
+
+#                 if self.adj in ['DAD', 'DA']:
+#                     y = y * norm
+
+#                 y = post_step(last + y)
+
+#             return y
+
+
+# class CorrectAndSmooth(nn.Module):
+#     r"""
+#     Description
+#     -----------
+#     Introduced in `Combining Label Propagation and Simple Models Out-performs Graph Neural Networks <https://arxiv.org/abs/2010.13993>`_
+#     Parameters
+#     ----------
+#         num_correction_layers: int
+#             The number of correct propagations.
+#         correction_alpha: float
+#             The coefficient of correction.
+#         correction_adj: str
+#             'DAD': D^-0.5 * A * D^-0.5
+#             'DA': D^-1 * A
+#             'AD': A * D^-1
+#         num_smoothing_layers: int
+#             The number of smooth propagations.
+#         smoothing_alpha: float
+#             The coefficient of smoothing.
+#         smoothing_adj: str
+#             'DAD': D^-0.5 * A * D^-0.5
+#             'DA': D^-1 * A
+#             'AD': A * D^-1
+#         autoscale: bool, optional
+#             If set to True, will automatically determine the scaling factor :math:`\sigma`. Default is True.
+#         scale: float, optional
+#             The scaling factor :math:`\sigma`, in case :obj:`autoscale = False`. Default is 1.
+#     """
+
+#     def __init__(self,
+#                  num_correction_layers,
+#                  correction_alpha,
+#                  correction_adj,
+#                  num_smoothing_layers,
+#                  smoothing_alpha,
+#                  smoothing_adj,
+#                  autoscale=True,
+#                  scale=1.):
+#         super(CorrectAndSmooth, self).__init__()
+
+#         self.autoscale = autoscale
+#         self.scale = scale
+
+#         self.prop1 = LabelPropagation(num_correction_layers,
+#                                       correction_alpha,
+#                                       correction_adj)
+#         # We correct typo "correction_adj" in smoothing label propagation
+#         self.prop2 = LabelPropagation(num_smoothing_layers,
+#                                       smoothing_alpha,
+#                                       smoothing_adj)
+
+#     def correct(self, g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes):
+#         # We suppose y_soft=[(train_nodes, val_nodes, test_nodes), n_classes]
+#         # Expected output result=[(train_nodes, val_nodes, test_nodes), n_classes]
+#         # while labels=[all_nodes, n_classes]
+#         with g.local_scope():
+#             assert abs(float(y_soft.sum()) / y_soft.size(0) - 1.0) < 1e-2
+#             numel = train_nid.size(0)
+#             assert y_true.size(0) == numel
+
+#             if y_true.dtype == torch.long:
+#                 y_true = F.one_hot(y_true.view(-1), y_soft.size(-1)).to(y_soft.dtype)
+
+#             error = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
+#             error[train_nid] = y_true - y_soft[:len(train_nid)]
+#             y_all = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
+#             y_all[torch.cat([train_nid, val_nid, test_nid], dim=0)] = y_soft
+
+#             if self.autoscale:
+#                 smoothed_error = self.prop1(g, error, post_step=lambda x: x.clamp_(-1., 1.))
+#                 sigma = error[train_nid].abs().sum() / numel
+#                 scale = sigma / smoothed_error.abs().sum(dim=1, keepdim=True)
+#                 scale[scale.isinf() | (scale > 1000)] = 1.0
+
+#                 result = y_soft + scale * smoothed_error[torch.cat([train_nid, val_nid, test_nid], dim=0)]
+#                 result[result.isnan()] = y_soft[result.isnan()]
+#                 return result
+#             else:
+#                 def fix_input(x):
+#                     x[train_nid] = error[train_nid]
+#                     return x
+
+#                 smoothed_error = self.prop1(g, error, post_step=fix_input)
+
+#                 result = y_all + self.scale * smoothed_error[torch.cat([train_nid, val_nid, test_nid], dim=0)]
+#                 result[result.isnan()] = y_soft[result.isnan()]
+#                 return result
+
+#     def smooth(self, g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes):
+#         with g.local_scope():
+#             numel = train_nid.size(0)
+#             assert y_true.size(0) == numel
+
+#             if len(y_true.shape) == 1 or y_true.shape[1] == 1:
+#                 y_true = F.one_hot(y_true.view(-1), y_soft.size(-1)).to(y_soft.dtype)
+
+#             y_all = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
+#             y_all[torch.cat([train_nid, val_nid, test_nid], dim=0)] = y_soft
+#             y_all[train_nid] = y_true
+
+#             return self.prop2(g, y_all)[torch.cat([train_nid, val_nid, test_nid], dim=0)]
+
+#     def forward(self, g, y_soft, y_true, operations, train_nid, val_nid, test_nid, n_nodes):
+#         for operation in operations:
+#             if operation == "correction":
+#                 print("Performing correction...", flush=True)
+#                 y_soft = self.correct(g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes)
+#             if operation == "smoothing":
+#                 print("Performing smoothing...", flush=True)
+#                 y_soft = self.smooth(g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes)
+#         return y_soft
+
+
 class LabelPropagation(nn.Module):
     r"""
     Description
@@ -367,13 +541,12 @@ class LabelPropagation(nn.Module):
             'AD': A * D^-1
     """
 
-    def __init__(self, num_layers, alpha, adj='DAD', display=False):
+    def __init__(self, num_layers, alpha, adj='DAD'):
         super(LabelPropagation, self).__init__()
 
         self.num_layers = num_layers
         self.alpha = alpha
         self.adj = adj
-        self.display = display
 
     @torch.no_grad()
     def forward(self, g, labels, mask=None, post_step=lambda y: y.clamp_(0., 1.)):
@@ -390,7 +563,7 @@ class LabelPropagation(nn.Module):
             degs = g.in_degrees().float().clamp(min=1)
             norm = torch.pow(degs, -0.5 if self.adj == 'DAD' else -1).to(labels.device).unsqueeze(1)
 
-            for _ in tqdm(range(self.num_layers)) if self.display else range(self.num_layers):
+            for _ in range(self.num_layers):
                 # Assume the graphs to be undirected
                 if self.adj in ['DAD', 'AD']:
                     y = norm * y
@@ -453,68 +626,49 @@ class CorrectAndSmooth(nn.Module):
         self.prop1 = LabelPropagation(num_correction_layers,
                                       correction_alpha,
                                       correction_adj)
-        # We correct typo "correction_adj" in smoothing label propagation
         self.prop2 = LabelPropagation(num_smoothing_layers,
                                       smoothing_alpha,
                                       smoothing_adj)
 
-    def correct(self, g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes):
-        # We suppose y_soft=[(train_nodes, val_nodes, test_nodes), n_classes]
-        # Expected output result=[(train_nodes, val_nodes, test_nodes), n_classes]
-        # while labels=[all_nodes, n_classes]
+    def correct(self, g, y_soft, y_true, mask):
         with g.local_scope():
             assert abs(float(y_soft.sum()) / y_soft.size(0) - 1.0) < 1e-2
-            numel = train_nid.size(0)
+            numel = int(mask.sum()) if mask.dtype == torch.bool else mask.size(0)
             assert y_true.size(0) == numel
 
             if y_true.dtype == torch.long:
                 y_true = F.one_hot(y_true.view(-1), y_soft.size(-1)).to(y_soft.dtype)
 
-            error = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
-            error[train_nid] = y_true - y_soft[:len(train_nid)]
-            y_all = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
-            y_all[torch.cat([train_nid, val_nid, test_nid], dim=0)] = y_soft
+            error = torch.zeros_like(y_soft)
+            error[mask] = y_true - y_soft[mask]
 
             if self.autoscale:
                 smoothed_error = self.prop1(g, error, post_step=lambda x: x.clamp_(-1., 1.))
-                sigma = error[train_nid].abs().sum() / numel
+                sigma = error[mask].abs().sum() / numel
                 scale = sigma / smoothed_error.abs().sum(dim=1, keepdim=True)
                 scale[scale.isinf() | (scale > 1000)] = 1.0
 
-                result = y_soft + scale * smoothed_error[torch.cat([train_nid, val_nid, test_nid], dim=0)]
+                result = y_soft + scale * smoothed_error
                 result[result.isnan()] = y_soft[result.isnan()]
                 return result
             else:
                 def fix_input(x):
-                    x[train_nid] = error[train_nid]
+                    x[mask] = error[mask]
                     return x
 
                 smoothed_error = self.prop1(g, error, post_step=fix_input)
 
-                result = y_all + self.scale * smoothed_error[torch.cat([train_nid, val_nid, test_nid], dim=0)]
+                result = y_soft + self.scale * smoothed_error
                 result[result.isnan()] = y_soft[result.isnan()]
                 return result
 
-    def smooth(self, g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes):
+    def smooth(self, g, y_soft, y_true, mask):
         with g.local_scope():
-            numel = train_nid.size(0)
+            numel = int(mask.sum()) if mask.dtype == torch.bool else mask.size(0)
             assert y_true.size(0) == numel
 
-            if len(y_true.shape) == 1 or y_true.shape[1] == 1:
+            if y_true.dtype == torch.long:
                 y_true = F.one_hot(y_true.view(-1), y_soft.size(-1)).to(y_soft.dtype)
 
-            y_all = torch.zeros(size=(n_nodes, y_soft.size(1))).to(y_soft.device)
-            y_all[torch.cat([train_nid, val_nid, test_nid], dim=0)] = y_soft
-            y_all[train_nid] = y_true
-
-            return self.prop2(g, y_all)[torch.cat([train_nid, val_nid, test_nid], dim=0)]
-
-    def forward(self, g, y_soft, y_true, operations, train_nid, val_nid, test_nid, n_nodes):
-        for operation in operations:
-            if operation == "correction":
-                print("Performing correction...", flush=True)
-                y_soft = self.correct(g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes)
-            if operation == "smoothing":
-                print("Performing smoothing...", flush=True)
-                y_soft = self.smooth(g, y_soft, y_true, train_nid, val_nid, test_nid, n_nodes)
-        return y_soft
+            y_soft[mask] = y_true
+            return self.prop2(g, y_soft)

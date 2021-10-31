@@ -127,6 +127,12 @@ def load_dataset(device, args):
             g, labels, train_nid, val_nid, test_nid, node_feat = load_dgl_graph('../../dataset')
             g = dgl.to_bidirected(g, copy_ndata=True)
             g = dgl.add_self_loop(g)
+
+            print("Use node2vec embedding...", flush=True)
+            emb = torch.load('../../dataset/emb.pt', map_location='cpu')
+            emb.requires_grad = False
+            node_feat = torch.cat([node_feat, emb], dim=1)
+
             g.ndata["feat"] = node_feat
             train_nid = torch.from_numpy(train_nid)
             val_nid = torch.from_numpy(val_nid)

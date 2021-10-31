@@ -146,8 +146,8 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
 --GPU 0 1 2 3
 ```
 
-### 如何调试
-进入gnn目录，配置`launch.json`，如下面所示（解析参数），点击开始调试。
+### VSCode如何进行调试
+进入gnn目录，配置`launch.json`，如下面所示（解析参数），uncomment相应的内容，点击开始调试。
 ```javascript
 {
     // Use IntelliSense to learn about possible attributes.

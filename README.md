@@ -28,6 +28,8 @@ pip install -r requirement.txt
 
 ## 如何运行：
 
+[查看项目的整个目录树.](#Tree)
+
 ### 运行jupyter进行数据预处理
 对于4个Jupyter Notebook文件，请使用Jupyter环境运行，并注意把其中的竞赛数据文件所在的文件夹替换为你自己保存数据文件的文件夹。
 并记录下你处理完成后的数据文件所在的位置，供下面模型训练使用。
@@ -41,8 +43,13 @@ tail -f ../outputs/node2vec.log
 ```
 结果保存在`../dataset/emb.pt`中。
 
-## SAGN模型
-进入SAGN_with_SLE文件夹，按照指示进行运行。
+### 运行SGC并保存Embedding
+```bash
+cd sgc/
+python3 main.py
+```
+结果保存在`../dataset/sgc_emb.pt`中。
+
 
 
 ### 运行GNN模型并保存test结果
@@ -53,7 +60,7 @@ cd gnn/
 # generate index map
 python csv_idx_map.py
 # then run gnn in backward
-nohup python3 model_train.py --GPU 1 --use_emb --use_label --flag --all_train > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb sgc --use_label --flag --all_train > ../outputs/train1.log 2>&1 &
 # check the result in terminal
 tail -f ../outputs/train1.log
 
@@ -68,16 +75,46 @@ test结果保存在`../outputs/submit_xxxx-xx-xx.csv`中。
 # pretrain model in backward
 cd gnn/
 # graphattn
-nohup python3 model_train.py --GPU 1 --use_emb --save_emb --flag --all_train > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb sgc --save_emb --flag --all_train > ../outputs/train1.log 2>&1 &
 # graphsage
-nohup python3 model_train.py --GPU 0 --use_emb --save_emb --gnn_model graphsage --flag --all_train > ../outputs/train.log 2>&1 &
+nohup python3 model_train.py --GPU 0 --use_emb node2vec --save_emb --gnn_model graphsage --flag --all_train > ../outputs/train.log 2>&1 &
 # graphconv
-nohup python3 model_train.py --GPU 1 --use_emb --save_emb --gnn_model graphconv --flag --all_train > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb node2vec --save_emb --gnn_model graphconv --flag --all_train > ../outputs/train1.log 2>&1 &
 # run c&s
 cd ../correct_and_smooth
 python3 main.py --all_train
 ```
+inference logits保存在`../dataset.y_soft.pt` (GAT), `../dataset.y_soft_sage.pt` (GraphSAGE), `../dataset.y_soft_conv.pt` (GCN)中。
 test结果保存在`../outputs/submit_cs_xxxx-xx-xx.csv`中。
+
+### SAGN+SE使用方法
+进入`SAGN_with_SLE`文件夹，按照指示进行运行。
+```bash
+cd SAGN_with_SLE/scripts/maxp
+nohup bash train_maxp_sagn_use_label.sh > ../../outputs/sagn.log 2>&1 &
+
+# c&s + merge models
+cd SAGN_with_SLE/src/
+python3 post_process.py 
+```
+inference logits保存在`./SAGN_with_SLE/intermediate_outputs/maxp/sagn/use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_*_stage_*.pt`中。
+test结果保存在`../outputs/submit_sagn_xxxx-xx-xx.csv`中。
+
+
+### ~~ogbn-papers100M预训练~~
+ogbn-papers100M进行训练并保存model参数。
+```bash
+cd ogb/
+# then run gnn in backward
+nohup python3 model_train.py --GPU 0 --ogb --all_train > ../outputs/ogb.log 2>&1 &
+# run model in this dataset
+cd ../gnn/
+nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
+```
+
+
+---
+
 
 *注意*：请把--data_path的路径替换成用Jupyter Notebook文件处理后数据所在的位置路径。其余的参数，请参考model_train.py里面的入参说明修改。
 
@@ -93,16 +130,6 @@ test结果保存在`../outputs/submit_cs_xxxx-xx-xx.csv`中。
 --GPU 0 1 2 3
 ```
 
-## ogbn-papers100M预训练
-ogbn-papers100M进行训练并保存model参数。
-```bash
-cd ogb/
-# then run gnn in backward
-nohup python3 model_train.py --GPU 0 --ogb --all_train > ../outputs/ogb.log 2>&1 &
-# run model in this dataset
-cd ../gnn/
-nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train > ../outputs/train1.log 2>&1 &
-```
 
 ---
 ## 其他说明
@@ -124,24 +151,126 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
             "cwd": "${fileDirname}",
             "justMyCode": false,
             // python model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim 64 --n_layers 2 --fanout 20,20 --batch_size 4096 --GPU 1 --out_path ./
-            "args": [
-                "--data_path",
-                "../dataset",
-                "--gnn_model",
-                "graphsage",
-                "--hidden_dim",
-                "64",
-                "--n_layers",
-                "2",
-                "--fanout",
-                "20,20",
-                "--batch_size",
-                "4096",
-                "--GPU",
-                "1",
-                "--out_path",
-                "./outputs"
-            ]
+            // "args": [
+            //     // "--data_path",
+            //     // "../dataset",
+            //     // "--gnn_model",
+            //     // "graphattn",
+            //     // "--hidden_dim",
+            //     // "64",
+            //     // "--n_layers",
+            //     // "2",
+            //     // "--fanout",
+            //     // "20,20",
+            //     // "--batch_size",
+            //     // "4096",
+            //     "--GPU",
+            //     "1",
+            //     // "--out_path",
+            //     // "../outputs",
+            //     // "--use_emb",
+            //     // "--save_emb",
+            //     "--all_train"
+            // ]
+
+            // SAGN products
+            // "args": [
+            //     "--dataset",
+            //     "ogbn-products",
+            //     "--gpu",
+            //     "0",
+            //     "--aggr-gpu",
+            //     "0",
+            //     "--model",
+            //     "sagn",
+            //     "--seed",
+            //     "0",
+            //     "--num-runs",
+            //     "10",
+            //     "--threshold",
+            //     "0.9",
+            //     // "--epoch-setting",
+            //     // "1000+200+200",
+            //     "--lr",
+            //     "0.001",
+            //     "--weight-style",
+            //     "uniform",
+            //     "--batch-size",
+            //     "50000",
+            //     "--num-hidden",
+            //     "512",
+            //     "--dropout",
+            //     "0.5",
+            //     "--attn-drop",
+            //     "0.4",
+            //     "--input-drop",
+            //     "0.2",
+            //     "--K",
+            //     "3",
+            //     "--label-K",
+            //     "9",
+            //     "--use-labels",
+            //     "--weight-decay",
+            //     "0",
+            //     "--warmup-stage",
+            //     "-1",
+            //     "--memory-efficient"
+            // ]
+
+            //SAGN maxp papers100M
+            // "args": [
+            //     "--dataset",
+            //     "maxp", // ogbn-papers100M
+            //     "--gpu",
+            //     "0",
+            //     "--aggr-gpu",
+            //     "1",
+            //     "--eval-every",
+            //     "1",
+            //     "--model",
+            //     "sagn",
+            //     "--zero-inits",
+            //     "--chunks",
+            //     "1",
+            //     "--memory-efficient",
+            //     "--load-embs",
+            //     "--load-label-emb",
+            //     "--seed",
+            //     "0",
+            //     "--num-runs",
+            //     "1",
+            //     "--threshold",
+            //     "0.5",
+            //     "--epoch-setting",
+            //     "1",
+            //     "1",
+            //     // "1",
+            //     // "1",
+            //     "--lr",
+            //     "0.001",
+            //     "--batch-size",
+            //     "5000",
+            //     "--num-hidden",
+            //     "1024",
+            //     "--dropout",
+            //     "0.5",
+            //     "--attn-drop",
+            //     "0.",
+            //     "--input-drop",
+            //     "0.0",
+            //     "--label-drop",
+            //     "0.5",
+            //     "--K",
+            //     "5",
+            //     "--label-K",
+            //     "9",
+            //     // "--use-labels",
+            //     "--weight-decay",
+            //     "0",
+            //     "--warmup-stage",
+            //     "-1",
+            //     "--all-train"
+            // ]
         }
     ]
 }

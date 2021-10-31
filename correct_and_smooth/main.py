@@ -41,6 +41,7 @@ def main():
 
     # y_soft = torch.rand(labels.shape[0], 23)
     y_soft = torch.load('../dataset/y_soft.pt', map_location='cpu')
+    # use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
 
     y_soft_sage = None
     y_soft_conv = None

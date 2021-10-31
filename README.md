@@ -78,7 +78,8 @@ python3 model_train.py --data_path ../dataset --gnn_model graphsage --hidden_dim
 ```
 test结果保存在`../outputs/submit_xxxx-xx-xx.csv`中。
 
-### 运行和使用C&S方法
+### 使用C&S方法并进行模型融合
+目前融合GAT， GraphSAGE， GCN， 对logits进行加权求和。
 
 ```bash
 # pretrain model in backward

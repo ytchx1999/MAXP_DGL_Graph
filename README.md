@@ -1,6 +1,16 @@
 # MAXP_DGL_Graph
 [ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: Graph@ICT ]
 
+## Test提交结果
+
+最近结果比较好的方法。
+
+|Date  | Method | Score | 
+|:-:|:-:|:-:|
+| 2021-10-31 | SAGN + node2vec + SE + Model Merge (+GAT, +SAGE) + C&S | 54.5420166932282 |
+| 2021-10-24 | GAT + node2vec + FLAG + Model Merge (+SAGE, +GCN) + C&S | 54.2394856973069 |
+| 2021-10-22 | GAT + node2vec + FLAG + C&S | 53.9846753644328 | 
+...
 
 
 ## 代码库包括2个部分：
@@ -113,8 +123,14 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
 ```
 
 
----
 
+
+
+
+
+
+---
+## 其他说明
 
 *注意*：请把--data_path的路径替换成用Jupyter Notebook文件处理后数据所在的位置路径。其余的参数，请参考model_train.py里面的入参说明修改。
 
@@ -130,9 +146,6 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
 --GPU 0 1 2 3
 ```
 
-
----
-## 其他说明
 ### 如何调试
 进入gnn目录，配置`launch.json`，如下面所示（解析参数），点击开始调试。
 ```javascript

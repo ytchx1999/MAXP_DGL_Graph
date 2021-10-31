@@ -8,7 +8,7 @@
 |Date  | Method | Score | 
 |:-:|:-:|:-:|
 | 2021-10-31 | SAGN + node2vec + SE + Model Merge (+GAT, +SAGE) + C&S | 54.5420166932282 |
-| 2021-10-24 | GAT + node2vec + FLAG + Model Merge (+SAGE, +GCN) + C&S | 54.2394856973069 |
+| 2021-10-24 | GAT + node2vec + FLAG + C&S + Model Merge (+SAGE, +GCN) | 54.2394856973069 |
 | 2021-10-22 | GAT + node2vec + FLAG + C&S | 53.9846753644328 | 
 | ... | ... | ... |
 

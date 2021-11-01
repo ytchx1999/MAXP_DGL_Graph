@@ -5,12 +5,20 @@
 
 最近结果比较好的方法。
 
-|Date  | Method | Score | 
+|Date  | Method | Score |
 |:-:|:-:|:-:|
+| |  |  |
 | 2021-10-31 | SAGN + node2vec + SE + Model Merge (+GAT, +SAGE) + C&S | 54.5420166932282 |
 | 2021-10-24 | GAT + node2vec + FLAG + C&S + Model Merge (+SAGE, +GCN) | 54.2394856973069 |
-| 2021-10-22 | GAT + node2vec + FLAG + C&S | 53.9846753644328 | 
+| 2021-10-22 | GAT + node2vec + FLAG + C&S | 53.9846753644328 |
 | ... | ... | ... |
+| 2021-10-18 | GAT+res+bn+dropout+train_label的特征增强+FLAG  +增加训练epoch（5--10） | 52.95 |
+| 2021-10-17 | GAT+res+bn+dropout+train_label的特征增强+FLAG  +inception（已注释） | 小于52.53 |
+| 2021-10-15 | GAT+res+bn+dropout+train_label的特征增强  +FLAG | 52.53 |
+| 2021-10-15 | GAT+res+bn+dropout  +train_label的特征增强 | 51.27 |
+| 2021-10-14 | GAT+  res+bn+dropout，调整了采样策略 | 50.79 |
+| 2021-10-13 | GraphSAGE   +一些tricks | 48.48 |
+| 2021-10-13 | GraphSAGE（baseline） | 48.14 |
 
 ## 代码库包括2个部分：
 

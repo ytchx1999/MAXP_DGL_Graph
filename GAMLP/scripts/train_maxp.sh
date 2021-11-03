@@ -1,0 +1,23 @@
+cd "$(dirname $0)"
+python3 ../main.py \
+--use-rlu \
+--method R_GAMLP_RLU \
+--stages 10 10 10 \
+--train-num-epochs 0 0 0 \
+--threshold 0.85 \
+--input-drop 0.2 \
+--att-drop 0.5 \
+--label-drop 0 \
+--pre-process \
+--residual \
+--dataset maxp \
+--num-runs 1 \
+--eval 5 \
+--act leaky_relu \
+--batch 50000 \
+--patience 300 \
+--n-layers-1 4 \
+--n-layers-2 4 \
+--bns \
+--gama 0.1 \
+--all-train

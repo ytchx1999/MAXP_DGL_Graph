@@ -71,15 +71,15 @@ def prepare_label_emb(args, g, labels, n_classes, train_idx, valid_idx, test_idx
         homo_g = dgl.add_reverse_edges(homo_g, copy_ndata=True)
         homo_g.ndata["target_mask"] = homo_g.ndata[dgl.NTYPE] == target_type_id
         feat = g.ndata['feat']['paper']
-    print(n_classes)
-    print(labels.shape[0])
+    print(n_classes, flush=True)
+    print(labels.shape[0], flush=True)
     if label_teacher_emb == None:
         y = np.zeros(shape=(labels.shape[0], int(n_classes)))
         y[train_idx] = F.one_hot(labels[train_idx].to(
             torch.long), num_classes=n_classes).float().squeeze(1)
         y = torch.Tensor(y)
     else:
-        print("use teacher label")
+        print("use teacher label", flush=True)
         y = np.zeros(shape=(labels.shape[0], int(n_classes)))
         y[valid_idx] = label_teacher_emb[len(
             train_idx):len(train_idx)+len(valid_idx)]
@@ -119,7 +119,7 @@ def neighbor_average_labels(g, feat, args):
     """
     Compute multi-hop neighbor-averaged node features
     """
-    print("Compute neighbor-averaged labels")
+    print("Compute neighbor-averaged labels", flush=True)
     g.ndata["f"] = feat
     g.update_all(fn.copy_u("f", "msg"),
                  fn.mean("msg", "f"))
@@ -148,7 +148,7 @@ def neighbor_average_features(g, args):
     """
     Compute multi-hop neighbor-averaged node features
     """
-    print("Compute neighbor-averaged feats")
+    print("Compute neighbor-averaged feats", flush=True)
     g.ndata["feat_0"] = g.ndata["feat"]
     for hop in range(1, args.num_hops + 1):
         g.update_all(fn.copy_u(f"feat_{hop-1}", "msg"),
@@ -256,7 +256,7 @@ def load_dataset(name, device, args):
           f"# Train: {len(train_nid)}\n"
           f"# Val: {len(val_nid)}\n"
           f"# Test: {len(test_nid)}\n"
-          f"# Classes: {n_classes}\n")
+          f"# Classes: {n_classes}\n", flush=True)
 
     return g, labels, n_classes, train_nid, val_nid, test_nid, evaluator
 
@@ -277,7 +277,7 @@ def prepare_data(device, args, teacher_probs):
 
         with torch.no_grad():
             feats = preprocess_features(g, rel_subsets, args, device)
-            print("Done preprocessing")
+            print("Done preprocessing", flush=True)
         _, num_feats, in_feats = feats[0].shape
     elif args.dataset == 'ogbn-papers100M':
         g = dgl.add_reverse_edges(g, copy_ndata=True)

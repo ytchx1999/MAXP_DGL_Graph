@@ -1,8 +1,9 @@
 cd "$(dirname $0)"
 python3 ../main.py \
+--gpu 0 \
 --use-rlu \
 --method R_GAMLP_RLU \
---stages 10 10 10 \
+--stages 100 100 100 \
 --train-num-epochs 0 0 0 \
 --threshold 0.85 \
 --input-drop 0.2 \
@@ -13,11 +14,17 @@ python3 ../main.py \
 --dataset maxp \
 --num-runs 1 \
 --eval 5 \
---act leaky_relu \
---batch 50000 \
+--batch 5000 \
 --patience 300 \
 --n-layers-1 4 \
 --n-layers-2 4 \
 --bns \
 --gama 0.1 \
---all-train
+--label-num-hops 9 \
+--num-hops 6 \
+--hidden 1024 \
+--temp 0.001 \
+# --act sigmoid \
+# --act leaky_relu \
+# --all-train
+

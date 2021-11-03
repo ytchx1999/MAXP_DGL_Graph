@@ -34,7 +34,7 @@ def get_n_params(model):
 
 
 def run(args, device):
-    if not os.path.exists('./output/{args.dataset}'):
+    if not os.path.exists(f'./output/{args.dataset}'):
         os.makedirs('./output/{args.dataset}')
     checkpt_file = f"./output/{args.dataset}/"+uuid.uuid4().hex
 
@@ -47,26 +47,26 @@ def run(args, device):
             test_node_nums = len(test_nid)
             total_num_nodes = train_node_nums+valid_node_nums+test_node_nums
             if args.all_train:
-                print("This history model Train ACC is {}".format(evaluator(labels[:train_node_nums], predict_prob[:train_node_nums].argmax(dim=-1, keepdim=True).cpu())))
+                print("This history model Train ACC is {}".format(evaluator(labels[:train_node_nums], predict_prob[:train_node_nums].argmax(dim=-1, keepdim=True).cpu())), flush=True)
 
                 print("This history model Valid ACC is {}".format(evaluator(labels[train_node_nums-valid_node_nums:train_node_nums],
-                                                                            predict_prob[train_node_nums-valid_node_nums:train_node_nums].argmax(dim=-1, keepdim=True).cpu())))
+                                                                            predict_prob[train_node_nums-valid_node_nums:train_node_nums].argmax(dim=-1, keepdim=True).cpu())), flush=True)
 
                 print("This history model Test ACC is {}".format(evaluator(labels[train_node_nums:train_node_nums+test_node_nums],
-                                                                           predict_prob[train_node_nums:train_node_nums+test_node_nums].argmax(dim=-1, keepdim=True).cpu())))
+                                                                           predict_prob[train_node_nums:train_node_nums+test_node_nums].argmax(dim=-1, keepdim=True).cpu())), flush=True)
             else:
-                print("This history model Train ACC is {}".format(evaluator(labels[:train_node_nums], predict_prob[:train_node_nums].argmax(dim=-1, keepdim=True).cpu())))
+                print("This history model Train ACC is {}".format(evaluator(labels[:train_node_nums], predict_prob[:train_node_nums].argmax(dim=-1, keepdim=True).cpu())), flush=True)
 
                 print("This history model Valid ACC is {}".format(evaluator(labels[train_node_nums:train_node_nums+valid_node_nums],
-                                                                            predict_prob[train_node_nums:train_node_nums+valid_node_nums].argmax(dim=-1, keepdim=True).cpu())))
+                                                                            predict_prob[train_node_nums:train_node_nums+valid_node_nums].argmax(dim=-1, keepdim=True).cpu())), flush=True)
 
                 print("This history model Test ACC is {}".format(evaluator(labels[train_node_nums+valid_node_nums:train_node_nums+valid_node_nums+test_node_nums],
-                                                                           predict_prob[train_node_nums+valid_node_nums:train_node_nums+valid_node_nums+test_node_nums].argmax(dim=-1, keepdim=True).cpu())))
+                                                                           predict_prob[train_node_nums+valid_node_nums:train_node_nums+valid_node_nums+test_node_nums].argmax(dim=-1, keepdim=True).cpu())), flush=True)
             confident_nid = torch.arange(len(predict_prob))[
                 predict_prob.max(1)[0] > args.threshold]
             extra_confident_nid = confident_nid[confident_nid >= len(
                 train_nid)]
-            print(f'Stage: {stage}, confident nodes: {len(extra_confident_nid)}')
+            print(f'Stage: {stage}, confident nodes: {len(extra_confident_nid)}', flush=True)
             enhance_idx = extra_confident_nid
             if len(extra_confident_nid) > 0:
                 enhance_loader = torch.utils.data.DataLoader(
@@ -121,22 +121,22 @@ def run(args, device):
         #num_hops = args.num_hops + 1
 
         if args.use_rlu == False:
-            print("not use rlu")
+            print("not use rlu", flush=True)
             if args.dataset == "ogbn-mag":
                 _, num_feats, in_feats = feats[0].shape
                 model = gen_model_mag(args, num_feats, in_feats, num_classes)
             else:
                 model = gen_model(args, in_size, num_classes)
         else:
-            print("use rlu")
+            print("use rlu", flush=True)
             if args.dataset == "ogbn-mag":
                 _, num_feats, in_feats = feats[0].shape
                 model = gen_model_mag_rlu(args, num_feats, in_feats, num_classes)
             else:
                 model = gen_model_rlu(args, in_size, num_classes)
-        print(model)
+        print(model, flush=True)
         model = model.to(device)
-        print("# Params:", get_n_params(model))
+        print("# Params:", get_n_params(model), flush=True)
 
         loss_fcn = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
@@ -184,14 +184,15 @@ def run(args, device):
                         break
                 log += "Best Epoch {},Val {:.4f}, Test {:.4f}".format(
                     best_epoch, best_val, best_test)
-            print(log)
+            print(log, flush=True)
 
         print("Best Epoch {}, Val {:.4f}, Test {:.4f}".format(
-            best_epoch, best_val, best_test))
+            best_epoch, best_val, best_test), flush=True)
 
         model.load_state_dict(torch.load(checkpt_file+f'_{stage}.pkl'))
         preds = gen_output_torch(model, feats, all_loader, labels.device, label_emb)
-        torch.save(preds, checkpt_file+f'_{stage}.pt')
+        # torch.save(preds, checkpt_file+f'_{stage}.pt')
+        torch.save(preds, f'./output/{args.dataset}/gamlp_{stage}.pt')
 
     if args.dataset == 'maxp':
         with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
@@ -231,7 +232,7 @@ def main(args):
     val_accs = []
     test_accs = []
     for i in range(args.num_runs):
-        print(f"Run {i} start training")
+        print(f"Run {i} start training", flush=True)
         set_seed(args.seed+i)
         best_val, best_test, preds = run(args, device)
         np.save(f"output/{args.dataset}/output_{i}.npy", preds.numpy())
@@ -239,9 +240,9 @@ def main(args):
         test_accs.append(best_test)
 
     print(f"Average val accuracy: {np.mean(val_accs):.4f}, "
-          f"std: {np.std(val_accs):.4f}")
+          f"std: {np.std(val_accs):.4f}", flush=True)
     print(f"Average test accuracy: {np.mean(test_accs):.4f}, "
-          f"std: {np.std(test_accs):.4f}")
+          f"std: {np.std(test_accs):.4f}", flush=True)
 
     return np.mean(test_accs)
 
@@ -312,5 +313,5 @@ if __name__ == "__main__":
     parser.add_argument("--all-train", action="store_true")
 
     args = parser.parse_args()
-    print(args)
+    print(args, flush=True)
     main(args)

@@ -213,9 +213,9 @@ def run(args, device):
                 csv_index = idx_map[paper_id]
                 submit['label'][csv_index] = label
 
-        if not os.path.exists('../../outputs'):
-            os.makedirs('../../outputs', exist_ok=True)
-        submit.to_csv(os.path.join('../../outputs/', f'submit_sagn_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+        if not os.path.exists('../outputs'):
+            os.makedirs('../outputs', exist_ok=True)
+        submit.to_csv(os.path.join('../outputs/', f'submit_gamlp_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
         print("Done!", flush=True)
 

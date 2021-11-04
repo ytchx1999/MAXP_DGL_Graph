@@ -194,8 +194,9 @@ def run(args, device):
         torch.save(preds, checkpt_file+f'_{stage}.pt')
         # torch.save(preds, f'./output/{args.dataset}/gamlp_{stage}.pt')
 
+    torch.save(preds, '../dataset/gamlp.pt')
+
     if args.dataset == 'maxp':
-        torch.save(preds, f'../dataset/{args.dataset}/gamlp_{stage}.pt')
         with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
             test_id_dict = pickle.load(f)
         submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
@@ -203,7 +204,10 @@ def run(args, device):
             idx_map = pickle.load(f)
         preds = torch.argmax(preds, dim=-1)
         test_seeds_list = test_nid
-        test_pred_list = preds[len(train_nid)+len(val_nid):len(train_nid)+len(val_nid)+len(test_nid)]
+        if args.all_train:
+            test_pred_list = preds[len(train_nid):len(train_nid)+len(test_nid)]
+        else:
+            test_pred_list = preds[len(train_nid)+len(val_nid):len(train_nid)+len(val_nid)+len(test_nid)]
 
         # save results
         for i, id in tqdm(enumerate(test_seeds_list)):

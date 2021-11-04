@@ -7,7 +7,7 @@
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
-| |  |  |
+| 2021-11-04| GAMLP + node2vec + C&S + Model Merge (+SAGN-SE, +SAGE, GAT)  | 55.0070680604702 |
 | 2021-10-31 | SAGN + node2vec + SE + Model Merge (+GAT, +SAGE) + C&S | 54.5420166932282 |
 | 2021-10-24 | GAT + node2vec + FLAG + C&S + Model Merge (+SAGE, +GCN) | 54.2394856973069 |
 | 2021-10-22 | GAT + node2vec + FLAG + C&S | 53.9846753644328 |
@@ -118,6 +118,18 @@ python3 post_process.py
 inference logits保存在`./SAGN_with_SLE/intermediate_outputs/maxp/sagn/use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_*_stage_*.pt`中。
 test结果保存在`../outputs/submit_sagn_xxxx-xx-xx.csv`中。
 
+### GAMLP+C&S+模型融合
+
+```bash
+cd GAMLP/scripts/
+nohup bash train_maxp.sh > ../output/gamlp.log 2>&1 &
+
+# post process (model merge and c&s)
+cd GAMLP/
+python3 cs.py --all_train
+```
+inference logits保存在`../dataset/gamlp.pt`中。
+test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中。
 
 ### ~~ogbn-papers100M预训练~~
 ogbn-papers100M进行训练并保存model参数。

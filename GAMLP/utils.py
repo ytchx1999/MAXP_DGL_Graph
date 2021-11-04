@@ -70,7 +70,10 @@ def train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device,
         feat_list = [x[idx].to(device) for x in xs]
         y = labels[idx_1].to(torch.long).to(device)
         optimizer.zero_grad()
-        output_att = model(feat_list, label_emb[idx].to(device))
+        if label_emb != None:
+            output_att = model(feat_list, label_emb[idx].to(device))
+        else:
+            output_att = model(feat_list)
         L1 = loss_fcn(output_att[:len(idx_1)],  y)*(len(idx_1)*1.0/(len(idx_1)+len(idx_2)))
         teacher_soft = predict_prob[idx_2].to(device)
         teacher_prob = torch.max(teacher_soft, dim=1, keepdim=True)[0]
@@ -102,7 +105,10 @@ def train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, ev
     y_pred = []
     for batch in train_loader:
         batch_feats = [x[batch].to(device) for x in feats]
-        output_att = model(batch_feats, label_emb[batch].to(device))
+        if label_emb != None:
+            output_att = model(batch_feats, label_emb[batch].to(device))
+        else:
+            output_att = model(batch_feats)
         y_true.append(labels[batch].to(torch.long))
         y_pred.append(output_att.argmax(dim=-1, keepdim=True).cpu())
         L1 = loss_fcn(output_att, labels[batch])
@@ -122,7 +128,7 @@ def train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, ev
     return loss, acc
 
 
-@torch.no_grad()
+@ torch.no_grad()
 def test(model, feats, labels, test_loader, evaluator, label_emb):
     model.eval()
     device = labels.device
@@ -130,7 +136,10 @@ def test(model, feats, labels, test_loader, evaluator, label_emb):
     true = []
     for batch in test_loader:
         batch_feats = [feat[batch].to(device) for feat in feats]
-        preds.append(torch.argmax(model(batch_feats, label_emb[batch].to(device)), dim=-1))
+        if label_emb != None:
+            preds.append(torch.argmax(model(batch_feats, label_emb[batch].to(device)), dim=-1))
+        else:
+            preds.append(torch.argmax(model(batch_feats), dim=-1))
         true.append(labels[batch])
     true = torch.cat(true)
     preds = torch.cat(preds, dim=0)
@@ -142,12 +151,15 @@ def test(model, feats, labels, test_loader, evaluator, label_emb):
     return res
 
 
-@torch.no_grad()
+@ torch.no_grad()
 def gen_output_torch(model, feats, test_loader, device, label_emb):
     model.eval()
     preds = []
     for batch in test_loader:
         batch_feats = [feat[batch].to(device) for feat in feats]
-        preds.append(model(batch_feats, label_emb[batch].to(device)).cpu())
+        if label_emb != None:
+            preds.append(model(batch_feats, label_emb[batch].to(device)).cpu())
+        else:
+            preds.append(model(batch_feats).cpu())
     preds = torch.cat(preds, dim=0)
     return preds

@@ -191,10 +191,11 @@ def run(args, device):
 
         model.load_state_dict(torch.load(checkpt_file+f'_{stage}.pkl'))
         preds = gen_output_torch(model, feats, all_loader, labels.device, label_emb)
-        # torch.save(preds, checkpt_file+f'_{stage}.pt')
-        torch.save(preds, f'./output/{args.dataset}/gamlp_{stage}.pt')
+        torch.save(preds, checkpt_file+f'_{stage}.pt')
+        # torch.save(preds, f'./output/{args.dataset}/gamlp_{stage}.pt')
 
     if args.dataset == 'maxp':
+        torch.save(preds, f'../dataset/{args.dataset}/gamlp_{stage}.pt')
         with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
             test_id_dict = pickle.load(f)
         submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')

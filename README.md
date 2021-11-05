@@ -1,4 +1,4 @@
-# MAXP_DGL_Graph
+# MAXP-DGL-Graph-Machine-Learning-Challenge
 [ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: *Graph@ICT* ]
 
 ## Test提交结果
@@ -336,6 +336,9 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
 │   ├── diff_nodes.csv
 │   ├── emb.pt
 │   ├── features.npy
+│   ├── gamlp_1.pt
+│   ├── gamlp_2.pt
+│   ├── gamlp.pt
 │   ├── graph.bin
 │   ├── IDandLabels.csv
 │   ├── labels.pkl
@@ -344,11 +347,121 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
 │   ├── sgc_emb.pt
 │   ├── test_id_dict.pkl
 │   ├── train_nodes.csv
+│   ├── use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_0.pt
 │   ├── use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
 │   ├── validation_nodes.csv
 │   ├── y_soft_conv.pt
 │   ├── y_soft.pt
 │   └── y_soft_sage.pt
+├── GAMLP
+│   ├── cs.py
+│   ├── data
+│   │   ├── mag
+│   │   ├── preprocess_papers100m.py
+│   │   └── train_graph_emb.sh
+│   ├── dataset
+│   │   └── ogbn_products
+│   │       ├── embedding
+│   │       ├── mapping
+│   │       │   ├── labelidx2productcategory.csv.gz
+│   │       │   ├── nodeidx2asin.csv.gz
+│   │       │   └── README.md
+│   │       ├── processed
+│   │       │   ├── dgl_data_processed
+│   │       │   ├── geometric_data_processed.pt
+│   │       │   ├── pre_filter.pt
+│   │       │   └── pre_transform.pt
+│   │       ├── raw
+│   │       │   ├── edge.csv.gz
+│   │       │   ├── node-feat.csv.gz
+│   │       │   ├── node-label.csv.gz
+│   │       │   ├── num-edge-list.csv.gz
+│   │       │   └── num-node-list.csv.gz
+│   │       ├── RELEASE_v1.txt
+│   │       ├── split
+│   │       │   └── sales_ranking
+│   │       │       ├── test.csv.gz
+│   │       │       ├── train.csv.gz
+│   │       │       └── valid.csv.gz
+│   │       └── tmp
+│   ├── GAMLP.pdf
+│   ├── heteo_data.py
+│   ├── layer.py
+│   ├── load_dataset.py
+│   ├── logger.py
+│   ├── mag_perf.png
+│   ├── main.py
+│   ├── model.py
+│   ├── output
+│   │   ├── gamlp.log
+│   │   ├── maxp
+│   │   │   ├── 038fec23d66646bdbea4f48321c06d45_0.pkl
+│   │   │   ├── 038fec23d66646bdbea4f48321c06d45_0.pt
+│   │   │   ├── 038fec23d66646bdbea4f48321c06d45_1.pkl
+│   │   │   ├── 038fec23d66646bdbea4f48321c06d45_1.pt
+│   │   │   ├── 038fec23d66646bdbea4f48321c06d45_2.pkl
+│   │   │   ├── 038fec23d66646bdbea4f48321c06d45_2.pt
+│   │   │   ├── 13f02d430d834005afea80f9e6030903_0.pkl
+│   │   │   ├── 13f02d430d834005afea80f9e6030903_0.pt
+│   │   │   ├── 13f02d430d834005afea80f9e6030903_1.pkl
+│   │   │   ├── 23531c5263b3401aba302b1f73ba5247_0.pkl
+│   │   │   ├── 2759c14d61b0450f9126dc477056ca57_0.pkl
+│   │   │   ├── 2759c14d61b0450f9126dc477056ca57_0.pt
+│   │   │   ├── 4a0fc3843a654473a3523997d3e83165_0.pkl
+│   │   │   ├── 4a0fc3843a654473a3523997d3e83165_0.pt
+│   │   │   ├── 5092dc80131349739ebb3f57aa58595d_0.pkl
+│   │   │   ├── 5663c4882fe94b7e868ab256afdb7d6a_0.pkl
+│   │   │   ├── 59cfbd78a816409db493374a3f6015aa_0.pkl
+│   │   │   ├── 59cfbd78a816409db493374a3f6015aa_0.pt
+│   │   │   ├── 5ab3c46610744dd5b56dbb567d0c8e8a_0.pkl
+│   │   │   ├── 68229d24c6984b27964cf146a2e8a25c_0.pkl
+│   │   │   ├── 698c305da278499ca72571a1df44f3b7_0.pkl
+│   │   │   ├── 698c305da278499ca72571a1df44f3b7_0.pt
+│   │   │   ├── 6a87a8e7364244b4bc7d080cb3881b93_0.pkl
+│   │   │   ├── 6db31805325040f496c3620c82cda285_0.pkl
+│   │   │   ├── 6fed9e2239be4e36bdd59f24a8c3fe75_0.pkl
+│   │   │   ├── 8372dcdf20584876b9d330ec5b8d8583_0.pkl
+│   │   │   ├── 8372dcdf20584876b9d330ec5b8d8583_0.pt
+│   │   │   ├── 8bc7149252e4410ea4227ff6ef00fdd1_0.pkl
+│   │   │   ├── 8e1ca6b74ced47e39c28134137ed4d76_0.pkl
+│   │   │   ├── 8e1ca6b74ced47e39c28134137ed4d76_0.pt
+│   │   │   ├── 9b85f6536a4f4a38a36f5dded21fbbe4_0.pkl
+│   │   │   ├── a32689c83e474a3b81fa05b530e549cd_0.pkl
+│   │   │   ├── a32689c83e474a3b81fa05b530e549cd_0.pt
+│   │   │   ├── a32689c83e474a3b81fa05b530e549cd_1.pkl
+│   │   │   ├── a32689c83e474a3b81fa05b530e549cd_1.pt
+│   │   │   ├── a32689c83e474a3b81fa05b530e549cd_2.pkl
+│   │   │   ├── a32689c83e474a3b81fa05b530e549cd_2.pt
+│   │   │   ├── ab15635c9b534e25bd591dd7677a67de_0.pkl
+│   │   │   ├── b0b6c19d319049e695201d4d82aef63e_0.pkl
+│   │   │   ├── b0b6c19d319049e695201d4d82aef63e_0.pt
+│   │   │   ├── d30ab2026fd6474db2a369c9e41c806b_0.pkl
+│   │   │   ├── d30ab2026fd6474db2a369c9e41c806b_0.pt
+│   │   │   ├── e1251971498a43d681daaa5f0d7cb4cf_0.pkl
+│   │   │   ├── e19d270746b84de3a164e687736e71ca_0.pkl
+│   │   │   ├── e19d270746b84de3a164e687736e71ca_0.pt
+│   │   │   ├── e989e5b5b044441bbd0bbd3e49da9f9b_0.pkl
+│   │   │   ├── e989e5b5b044441bbd0bbd3e49da9f9b_0.pt
+│   │   │   ├── f52a0739125a4778940a40cfdf0e3900_0.pkl
+│   │   │   ├── f52a0739125a4778940a40cfdf0e3900_0.pt
+│   │   │   ├── gamlp_0.pt
+│   │   │   └── output_0.npy
+│   │   └── ogbn-products
+│   ├── papers100M_perf.png
+│   ├── post_process.py
+│   ├── products_perf.png
+│   ├── __pycache__
+│   │   ├── heteo_data.cpython-37.pyc
+│   │   ├── layer.cpython-37.pyc
+│   │   ├── load_dataset.cpython-37.pyc
+│   │   ├── model.cpython-37.pyc
+│   │   └── utils.cpython-37.pyc
+│   ├── README.md
+│   ├── requirements.txt
+│   ├── scripts
+│   │   ├── train_maxp.sh
+│   │   └── train_products.sh
+│   └── utils.py
 ├── gnn
 │   ├── csv_idx_map.py
 │   ├── flag.py
@@ -426,6 +539,10 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
 │   ├── submit_cs_2021-10-25.csv
 │   ├── submit_cs_2021-10-26.csv
 │   ├── submit_cs_2021-10-29.csv
+│   ├── submit_gamlp_2021-11-04.csv
+│   ├── submit_gamlp_2021-11-05.csv
+│   ├── submit_gamlp_cs_2021-11-04.csv
+│   ├── submit_gamlp_cs_2021-11-05.csv
 │   ├── submit_sagn_2021-10-30.csv
 │   ├── submit_sagn_2021-10-31.csv
 │   ├── train1.log
@@ -578,5 +695,5 @@ nohup python3 model_train.py --GPU 1 --pretrain --use_emb --save_emb --all_train
 └── tmp-pretrain
     └── y_soft.pt
 
-58 directories, 196 files
+74 directories, 297 files
 ```

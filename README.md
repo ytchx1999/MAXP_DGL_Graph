@@ -1,5 +1,5 @@
 # MAXP_DGL_Graph
-[ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: Graph@ICT ]
+[ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: *Graph@ICT* ]
 
 ## Test提交结果
 
@@ -7,8 +7,8 @@
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
-| 2021-11-05| GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_1, +SAGN_SE_stage_0, +SAGN_SE_stage_1, +SAGE, GAT)  | 55.0993580220235 |
-| 2021-11-04| GAMLP + node2vec + C&S + Model Merge (+SAGN-SE, +SAGE, GAT)  | 55.0070680604702 |
+| 2021-11-05| GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_1, +SAGN_SE_stage_0, +SAGN_SE_stage_2, +SAGE, +GAT)  | 55.0993580220235 |
+| 2021-11-04| GAMLP + node2vec + C&S + Model Merge (+SAGN-SE, +SAGE, +GAT)  | 55.0070680604702 |
 | 2021-10-31 | SAGN + node2vec + SE + Model Merge (+GAT, +SAGE) + C&S | 54.5420166932282 |
 | 2021-10-24 | GAT + node2vec + FLAG + C&S + Model Merge (+SAGE, +GCN) | 54.2394856973069 |
 | 2021-10-22 | GAT + node2vec + FLAG + C&S | 53.9846753644328 |
@@ -129,8 +129,18 @@ nohup bash train_maxp.sh > ../output/gamlp.log 2>&1 &
 cd GAMLP/
 python3 cs.py --all_train
 ```
-inference logits保存在`../dataset/gamlp.pt`中。
+inference logits保存在`../dataset/gamlp.pt`和`../dataset/gamlp_{seed}.pt`中。
 test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中。
+
+**模型融合 (所有模型先C&S)：**
+| model | weight |
+|:-:|:-:|
+| GAMLP (seed 0) | 0.5 |
+| GAMLP (seed 1) | 0.5 |
+| SAGN+SE (stage 0) | 0.2 |
+| SAGN+SE (stage 2) | 0.2 |
+| GraphSAGE | 0.2 |
+| GAT | 0.1 |
 
 ### ~~ogbn-papers100M预训练~~
 ogbn-papers100M进行训练并保存model参数。

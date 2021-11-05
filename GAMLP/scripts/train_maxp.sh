@@ -1,6 +1,7 @@
 cd "$(dirname $0)"
 python3 ../main.py \
---gpu 0 \
+--seed 1 \
+--gpu 1 \
 --method R_GAMLP \
 --stages 150 \
 --train-num-epochs 0  \

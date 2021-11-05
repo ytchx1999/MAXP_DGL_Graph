@@ -7,6 +7,7 @@
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
+| 2021-11-05| GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_1, +SAGN_SE_stage_0, +SAGN_SE_stage_1, +SAGE, GAT)  | 55.0993580220235 |
 | 2021-11-04| GAMLP + node2vec + C&S + Model Merge (+SAGN-SE, +SAGE, GAT)  | 55.0070680604702 |
 | 2021-10-31 | SAGN + node2vec + SE + Model Merge (+GAT, +SAGE) + C&S | 54.5420166932282 |
 | 2021-10-24 | GAT + node2vec + FLAG + C&S + Model Merge (+SAGE, +GCN) | 54.2394856973069 |

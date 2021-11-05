@@ -56,7 +56,7 @@ def load_output_files(output_path):
 def generate_preds_path(args):
     path = os.path.join('../dataset',
                         f"use_labels_{args.use_labels}_use_feats_{not args.avoid_features}" +
-                        f"_K_{args.K}_label_K_{args.label_K}_probs_seed_*_stage_{args.stage}.pt")
+                        f"_K_{args.K}_label_K_{args.label_K}_probs_seed_*_stage_*.pt")  # {args.stage}
     return path
 
 
@@ -98,13 +98,22 @@ def main():
     tr_va_te_nid = torch.cat([train_nid, val_nid, test_nid], dim=0)
     preds_path = generate_preds_path(args)
     print(preds_path)
-    probs = load_output_files(preds_path)[0]
-    y_soft_sagn = torch.zeros((labels.shape[0], probs.shape[1]))
-    y_soft_sagn[tr_va_te_nid] = probs
+    probs_list = load_output_files(preds_path)
+    probs0 = probs_list[0]
+    probs1 = probs_list[1]
+
+    y_soft_sagn0 = torch.zeros((labels.shape[0], probs0.shape[1]))
+    y_soft_sagn0[tr_va_te_nid] = probs0
+
+    y_soft_sagn1 = torch.zeros((labels.shape[0], probs1.shape[1]))
+    y_soft_sagn1[tr_va_te_nid] = probs1
 
     if os.path.exists('../dataset/gamlp.pt'):
-        y_soft_gamlp = torch.zeros((labels.shape[0], probs.shape[1]))
+        y_soft_gamlp = torch.zeros((labels.shape[0], probs0.shape[1]))
         y_soft_gamlp[tr_va_te_nid] = torch.load('../dataset/gamlp.pt', map_location='cpu')
+    if os.path.exists('../dataset/gamlp_1.pt'):
+        y_soft_gamlp1 = torch.zeros((labels.shape[0], probs0.shape[1]))
+        y_soft_gamlp1[tr_va_te_nid] = torch.load('../dataset/gamlp_1.pt', map_location='cpu')
 
     y_soft_sage = None
     y_soft_conv = None
@@ -116,25 +125,33 @@ def main():
     #     y_soft = 0.6 * y_soft + 0.2 * y_soft_sage + 0.2 * y_soft_conv
 
     y_soft_gamlp = y_soft_gamlp.softmax(dim=-1).to(device)
-    y_soft_sagn = y_soft_sagn.softmax(dim=-1).to(device)
+    y_soft_gamlp1 = y_soft_gamlp1.softmax(dim=-1).to(device)
+    y_soft_sagn0 = y_soft_sagn0.softmax(dim=-1).to(device)
+    y_soft_sagn1 = y_soft_sagn1.softmax(dim=-1).to(device)
     y_soft_gat = y_soft_gat.softmax(dim=-1).to(device)
     y_soft_sage = y_soft_sage.softmax(dim=-1).to(device)
     # y_soft_conv = y_soft_conv.softmax(dim=-1).to(device)
 
     y_pred_gamlp = y_soft_gamlp.argmax(dim=-1)
-    y_pred_sagn = y_soft_sagn.argmax(dim=-1)
+    y_pred_gamlp1 = y_soft_gamlp1.argmax(dim=-1)
+    y_pred_sagn0 = y_soft_sagn0.argmax(dim=-1)
+    y_pred_sagn1 = y_soft_sagn1.argmax(dim=-1)
     y_pred_gat = y_soft_gat.argmax(dim=-1)
     y_pred_sage = y_soft_sage.argmax(dim=-1)
     # y_pred_conv = y_soft_conv.argmax(dim=-1)
 
     val_acc_gamlp = torch.sum(y_pred_gamlp[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    val_acc_sagn = torch.sum(y_pred_sagn[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    val_acc_gamlp1 = torch.sum(y_pred_gamlp1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    val_acc_sagn0 = torch.sum(y_pred_sagn0[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    val_acc_sagn1 = torch.sum(y_pred_sagn1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     val_acc_gat = torch.sum(y_pred_gat[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     val_acc_sage = torch.sum(y_pred_sage[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     # val_acc_conv = torch.sum(y_pred_conv[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
 
     print(f'Pre valid acc: {val_acc_gamlp:.4f}', flush=True)
-    print(f'Pre valid acc: {val_acc_sagn:.4f}', flush=True)
+    print(f'Pre valid acc: {val_acc_gamlp1:.4f}', flush=True)
+    print(f'Pre valid acc: {val_acc_sagn0:.4f}', flush=True)
+    print(f'Pre valid acc: {val_acc_sagn1:.4f}', flush=True)
     print(f'Pre valid acc: {val_acc_gat:.4f}', flush=True)
     print(f'Pre valid acc: {val_acc_sage:.4f}', flush=True)
     # print(f'Pre valid acc: {val_acc_conv:.4f}', flush=True)
@@ -159,10 +176,20 @@ def main():
     y_pred_gamlp = y_soft_gamlp.argmax(dim=-1)
     val_acc_gamlp = torch.sum(y_pred_gamlp[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
 
-    y_soft_sagn = cs.correct(graph, y_soft_sagn, labels[mask_idx], mask_idx)
-    y_soft_sagn = cs.smooth(graph, y_soft_sagn, labels[mask_idx], mask_idx)
-    y_pred_sagn = y_soft_sagn.argmax(dim=-1)
-    val_acc_sagn = torch.sum(y_pred_sagn[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+    y_soft_gamlp1 = cs.correct(graph, y_soft_gamlp1, labels[mask_idx], mask_idx)
+    y_soft_gamlp1 = cs.smooth(graph, y_soft_gamlp1, labels[mask_idx], mask_idx)
+    y_pred_gamlp1 = y_soft_gamlp1.argmax(dim=-1)
+    val_acc_gamlp1 = torch.sum(y_pred_gamlp1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+
+    y_soft_sagn0 = cs.correct(graph, y_soft_sagn0, labels[mask_idx], mask_idx)
+    y_soft_sagn0 = cs.smooth(graph, y_soft_sagn0, labels[mask_idx], mask_idx)
+    y_pred_sagn0 = y_soft_sagn0.argmax(dim=-1)
+    val_acc_sagn0 = torch.sum(y_pred_sagn0[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+
+    y_soft_sagn1 = cs.correct(graph, y_soft_sagn1, labels[mask_idx], mask_idx)
+    y_soft_sagn1 = cs.smooth(graph, y_soft_sagn1, labels[mask_idx], mask_idx)
+    y_pred_sagn1 = y_soft_sagn1.argmax(dim=-1)
+    val_acc_sagn1 = torch.sum(y_pred_sagn1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
 
     y_soft_gat = cs.correct(graph, y_soft_gat, labels[mask_idx], mask_idx)
     y_soft_gat = cs.smooth(graph, y_soft_gat, labels[mask_idx], mask_idx)
@@ -180,7 +207,9 @@ def main():
     # val_acc_conv = torch.sum(y_pred_conv[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
 
     print(f'Valid acc: {val_acc_gamlp:.4f}', flush=True)
-    print(f'Valid acc: {val_acc_sagn:.4f}', flush=True)
+    print(f'Valid acc: {val_acc_gamlp1:.4f}', flush=True)
+    print(f'Valid acc: {val_acc_sagn0:.4f}', flush=True)
+    print(f'Valid acc: {val_acc_sagn1:.4f}', flush=True)
     print(f'Valid acc: {val_acc_gat:.4f}', flush=True)
     print(f'Valid acc: {val_acc_sage:.4f}', flush=True)
     # print(f'Valid acc: {val_acc_conv:.4f}', flush=True)
@@ -196,7 +225,7 @@ def main():
     # val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     # print(f'Final valid acc: {val_acc:.4f}', flush=True)
 
-    y_soft = 0.6 * y_soft_gamlp + 0.4 * y_soft_sagn + 0.2 * y_soft_sage + 0.1 * y_soft_gat
+    y_soft = 0.5 * y_soft_gamlp + 0.5 * y_soft_gamlp1 + 0.2 * y_soft_sagn0 + 0.2 * y_soft_sagn1 + 0.2 * y_soft_sage + 0.1 * y_soft_gat
     # y_soft = y_soft_gamlp
     y_soft = y_soft.softmax(dim=-1).to(device)
     y_pred = y_soft.argmax(dim=-1)

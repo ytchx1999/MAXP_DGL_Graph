@@ -194,7 +194,7 @@ def run(args, device):
         torch.save(preds, checkpt_file+f'_{stage}.pt')
         # torch.save(preds, f'./output/{args.dataset}/gamlp_{stage}.pt')
 
-    torch.save(preds, '../dataset/gamlp.pt')
+    torch.save(preds, f'../dataset/gamlp_{args.seed}.pt')
 
     if args.dataset == 'maxp':
         with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:

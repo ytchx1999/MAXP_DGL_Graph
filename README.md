@@ -7,6 +7,7 @@
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
+| 2021-11-06 | GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_{0-9}) | 55.3694749826675 |
 | 2021-11-05| GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_1, +SAGN_SE_stage_0, +SAGN_SE_stage_2, +SAGE, +GAT)  | 55.0993580220235 |
 | 2021-11-04| GAMLP + node2vec + C&S + Model Merge (+SAGN-SE, +SAGE, +GAT)  | 55.0070680604702 |
 | 2021-10-31 | SAGN + node2vec + SE + Model Merge (+GAT, +SAGE) + C&S | 54.5420166932282 |
@@ -127,20 +128,22 @@ nohup bash train_maxp.sh > ../output/gamlp.log 2>&1 &
 
 # post process (model merge and c&s)
 cd GAMLP/
-python3 cs.py --all_train
+python3 cs.py --all_train --gpu 1
 ```
 inference logits保存在`../dataset/gamlp.pt`和`../dataset/gamlp_{seed}.pt`中。
 test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中。
 
 **模型融合 (所有模型先C&S)：**
+
+seed 0-9:
 | model | weight |
 |:-:|:-:|
-| GAMLP (seed 0) | 0.5 |
-| GAMLP (seed 1) | 0.5 |
-| SAGN+SE (stage 0) | 0.2 |
-| SAGN+SE (stage 2) | 0.2 |
-| GraphSAGE | 0.2 |
-| GAT | 0.1 |
+| GAMLP (seed 0) | 0.2 |
+| GAMLP (seed 1) | 0.2 |
+| ... | ... |
+| GAMLP (seed 9) | 0.2 |
+
+
 
 ### ~~ogbn-papers100M预训练~~
 ogbn-papers100M进行训练并保存model参数。

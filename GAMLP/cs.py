@@ -1,6 +1,7 @@
 import argparse
 import copy
 import os
+from dgl import random
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -67,12 +68,6 @@ def main():
 
     # check cuda
     device = f'cuda:{args.gpu}' if torch.cuda.is_available() and args.gpu >= 0 else 'cpu'
-    # teacher_probs = None
-
-    # with torch.no_grad():
-    #     data = prepare_data(device, args, teacher_probs)
-    # feats, labels, in_size, num_classes, \
-    #     train_nid, val_nid, test_nid, evaluator, label_emb = data
 
     graph = graph.to(device)
     labels = labels.to(device)
@@ -89,72 +84,51 @@ def main():
     # model.load_state_dict(torch.load(f'base/{args.dataset}-{args.model}.pt'))
     # model.eval()
 
-    # y_soft = model(feats).exp()
-
     # y_soft = torch.rand(labels.shape[0], 23)
     y_soft_gat = torch.load('../dataset/y_soft.pt', map_location='cpu')
 
     # use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
     tr_va_te_nid = torch.cat([train_nid, val_nid, test_nid], dim=0)
-    preds_path = generate_preds_path(args)
-    print(preds_path)
-    probs_list = load_output_files(preds_path)
-    probs0 = probs_list[0]
-    probs1 = probs_list[1]
+    # preds_path = generate_preds_path(args)
+    # print(preds_path)
+    # probs_list = load_output_files(preds_path)
+    # probs0 = probs_list[0]
+    # probs1 = probs_list[1]
+    # y_soft_sagn0 = torch.zeros((labels.shape[0], probs0.shape[1]))
+    # y_soft_sagn0[tr_va_te_nid] = probs0
+    # y_soft_sagn1 = torch.zeros((labels.shape[0], probs1.shape[1]))
+    # y_soft_sagn1[tr_va_te_nid] = probs1
 
-    y_soft_sagn0 = torch.zeros((labels.shape[0], probs0.shape[1]))
-    y_soft_sagn0[tr_va_te_nid] = probs0
+    y_soft_gamlp = []
 
-    y_soft_sagn1 = torch.zeros((labels.shape[0], probs1.shape[1]))
-    y_soft_sagn1[tr_va_te_nid] = probs1
+    for i in range(100):
+        if os.path.exists(f'../dataset/gamlp_{i}.pt'):
+            y_soft_gamlp.append(torch.zeros((labels.shape[0], y_soft_gat.shape[1])))
+            y_soft_gamlp[i][tr_va_te_nid] = torch.load(f'../dataset/gamlp_{i}.pt', map_location='cpu')
+        else:
+            break
 
-    if os.path.exists('../dataset/gamlp.pt'):
-        y_soft_gamlp = torch.zeros((labels.shape[0], probs0.shape[1]))
-        y_soft_gamlp[tr_va_te_nid] = torch.load('../dataset/gamlp.pt', map_location='cpu')
-    if os.path.exists('../dataset/gamlp_1.pt'):
-        y_soft_gamlp1 = torch.zeros((labels.shape[0], probs0.shape[1]))
-        y_soft_gamlp1[tr_va_te_nid] = torch.load('../dataset/gamlp_1.pt', map_location='cpu')
-
-    y_soft_sage = None
-    y_soft_conv = None
-    if os.path.exists('../dataset/y_soft_sage.pt'):
-        y_soft_sage = torch.load('../dataset/y_soft_sage.pt', map_location='cpu')
-    if os.path.exists('../dataset/y_soft_sage.pt'):
-        y_soft_conv = torch.load('../dataset/y_soft_conv.pt', map_location='cpu')
+    # y_soft_sage = None
+    # y_soft_conv = None
+    # if os.path.exists('../dataset/y_soft_sage.pt'):
+    #     y_soft_sage = torch.load('../dataset/y_soft_sage.pt', map_location='cpu')
+    # if os.path.exists('../dataset/y_soft_sage.pt'):
+    #     y_soft_conv = torch.load('../dataset/y_soft_conv.pt', map_location='cpu')
     # if y_soft_sage != None and y_soft_conv != None:
     #     y_soft = 0.6 * y_soft + 0.2 * y_soft_sage + 0.2 * y_soft_conv
 
-    y_soft_gamlp = y_soft_gamlp.softmax(dim=-1).to(device)
-    y_soft_gamlp1 = y_soft_gamlp1.softmax(dim=-1).to(device)
-    y_soft_sagn0 = y_soft_sagn0.softmax(dim=-1).to(device)
-    y_soft_sagn1 = y_soft_sagn1.softmax(dim=-1).to(device)
-    y_soft_gat = y_soft_gat.softmax(dim=-1).to(device)
-    y_soft_sage = y_soft_sage.softmax(dim=-1).to(device)
-    # y_soft_conv = y_soft_conv.softmax(dim=-1).to(device)
+    y_pred_gamlp = []
+    val_acc_gamlp = []
 
-    y_pred_gamlp = y_soft_gamlp.argmax(dim=-1)
-    y_pred_gamlp1 = y_soft_gamlp1.argmax(dim=-1)
-    y_pred_sagn0 = y_soft_sagn0.argmax(dim=-1)
-    y_pred_sagn1 = y_soft_sagn1.argmax(dim=-1)
-    y_pred_gat = y_soft_gat.argmax(dim=-1)
-    y_pred_sage = y_soft_sage.argmax(dim=-1)
-    # y_pred_conv = y_soft_conv.argmax(dim=-1)
+    for i in range(len(y_soft_gamlp)):
+        y_pred_gamlp.append(None)
+        val_acc_gamlp.append(None)
 
-    val_acc_gamlp = torch.sum(y_pred_gamlp[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    val_acc_gamlp1 = torch.sum(y_pred_gamlp1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    val_acc_sagn0 = torch.sum(y_pred_sagn0[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    val_acc_sagn1 = torch.sum(y_pred_sagn1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    val_acc_gat = torch.sum(y_pred_gat[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    val_acc_sage = torch.sum(y_pred_sage[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    # val_acc_conv = torch.sum(y_pred_conv[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    print(f'Pre valid acc: {val_acc_gamlp:.4f}', flush=True)
-    print(f'Pre valid acc: {val_acc_gamlp1:.4f}', flush=True)
-    print(f'Pre valid acc: {val_acc_sagn0:.4f}', flush=True)
-    print(f'Pre valid acc: {val_acc_sagn1:.4f}', flush=True)
-    print(f'Pre valid acc: {val_acc_gat:.4f}', flush=True)
-    print(f'Pre valid acc: {val_acc_sage:.4f}', flush=True)
-    # print(f'Pre valid acc: {val_acc_conv:.4f}', flush=True)
+    for i in range(len(y_soft_gamlp)):
+        y_soft_gamlp[i] = y_soft_gamlp[i].softmax(dim=-1).to(device)
+        y_pred_gamlp[i] = y_soft_gamlp[i].argmax(dim=-1)
+        val_acc_gamlp[i] = torch.sum(y_pred_gamlp[i][val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+        print(f'Pre valid acc: {val_acc_gamlp[i]:.4f}', flush=True)
 
     print('---------- Correct & Smoothing ----------', flush=True)
     cs = CorrectAndSmooth(num_correction_layers=args.num_correction_layers,
@@ -171,53 +145,12 @@ def main():
     else:
         mask_idx = train_nid
 
-    y_soft_gamlp = cs.correct(graph, y_soft_gamlp, labels[mask_idx], mask_idx)
-    y_soft_gamlp = cs.smooth(graph, y_soft_gamlp, labels[mask_idx], mask_idx)
-    y_pred_gamlp = y_soft_gamlp.argmax(dim=-1)
-    val_acc_gamlp = torch.sum(y_pred_gamlp[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    y_soft_gamlp1 = cs.correct(graph, y_soft_gamlp1, labels[mask_idx], mask_idx)
-    y_soft_gamlp1 = cs.smooth(graph, y_soft_gamlp1, labels[mask_idx], mask_idx)
-    y_pred_gamlp1 = y_soft_gamlp1.argmax(dim=-1)
-    val_acc_gamlp1 = torch.sum(y_pred_gamlp1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    y_soft_sagn0 = cs.correct(graph, y_soft_sagn0, labels[mask_idx], mask_idx)
-    y_soft_sagn0 = cs.smooth(graph, y_soft_sagn0, labels[mask_idx], mask_idx)
-    y_pred_sagn0 = y_soft_sagn0.argmax(dim=-1)
-    val_acc_sagn0 = torch.sum(y_pred_sagn0[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    y_soft_sagn1 = cs.correct(graph, y_soft_sagn1, labels[mask_idx], mask_idx)
-    y_soft_sagn1 = cs.smooth(graph, y_soft_sagn1, labels[mask_idx], mask_idx)
-    y_pred_sagn1 = y_soft_sagn1.argmax(dim=-1)
-    val_acc_sagn1 = torch.sum(y_pred_sagn1[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    y_soft_gat = cs.correct(graph, y_soft_gat, labels[mask_idx], mask_idx)
-    y_soft_gat = cs.smooth(graph, y_soft_gat, labels[mask_idx], mask_idx)
-    y_pred_gat = y_soft_gat.argmax(dim=-1)
-    val_acc_gat = torch.sum(y_pred_gat[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    y_soft_sage = cs.correct(graph, y_soft_sage, labels[mask_idx], mask_idx)
-    y_soft_sage = cs.smooth(graph, y_soft_sage, labels[mask_idx], mask_idx)
-    y_pred_sage = y_soft_sage.argmax(dim=-1)
-    val_acc_sage = torch.sum(y_pred_sage[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    # y_soft_conv = cs.correct(graph, y_soft_conv, labels[mask_idx], mask_idx)
-    # y_soft_conv = cs.smooth(graph, y_soft_conv, labels[mask_idx], mask_idx)
-    # y_pred_conv = y_soft_conv.argmax(dim=-1)
-    # val_acc_conv = torch.sum(y_pred_conv[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-
-    print(f'Valid acc: {val_acc_gamlp:.4f}', flush=True)
-    print(f'Valid acc: {val_acc_gamlp1:.4f}', flush=True)
-    print(f'Valid acc: {val_acc_sagn0:.4f}', flush=True)
-    print(f'Valid acc: {val_acc_sagn1:.4f}', flush=True)
-    print(f'Valid acc: {val_acc_gat:.4f}', flush=True)
-    print(f'Valid acc: {val_acc_sage:.4f}', flush=True)
-    # print(f'Valid acc: {val_acc_conv:.4f}', flush=True)
-
-    # y_soft = 0.5 * y_soft_gat + 0.4 * y_soft_sage
-    # y_pred = y_soft.argmax(dim=-1)
-    # val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    # print(f'Final valid acc: {val_acc:.4f}', flush=True)
+    for i in range(len(y_soft_gamlp)):
+        y_soft_gamlp[i] = cs.correct(graph, y_soft_gamlp[i], labels[mask_idx], mask_idx)
+        y_soft_gamlp[i] = cs.smooth(graph, y_soft_gamlp[i], labels[mask_idx], mask_idx)
+        y_pred_gamlp[i] = y_soft_gamlp[i].argmax(dim=-1)
+        val_acc_gamlp[i] = torch.sum(y_pred_gamlp[i][val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+        print(f'Valid acc: {val_acc_gamlp[i]:.4f}', flush=True)
 
     # y_soft = cs.correct(graph, y_soft, labels[mask_idx], mask_idx)
     # y_soft = cs.smooth(graph, y_soft, labels[mask_idx], mask_idx)
@@ -225,18 +158,25 @@ def main():
     # val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     # print(f'Final valid acc: {val_acc:.4f}', flush=True)
 
-    y_soft = 0.5 * y_soft_gamlp + 0.5 * y_soft_gamlp1 + 0.2 * y_soft_sagn0 + 0.2 * y_soft_sagn1 + 0.2 * y_soft_sage + 0.1 * y_soft_gat
+    y_soft = 0
+    w = [0.2] * len(y_soft_gamlp)
+    # w = [
+    #     0, 0, 0.5, 0, 0.5, 0, 0.5, 0.5, 0.5, 0,
+    #     0, 0, 0.5, 0, 0, 0.5, 0, 0, 0, 0
+    # ]
+    for i in range(len(y_soft_gamlp)):
+        y_soft += (w[i] * y_soft_gamlp[i])
+
+    # y_soft = 0.2 * y_soft_gamlp + 0.2 * y_soft_gamlp1 + 0.2 * y_soft_gamlp2 + 0.2 * y_soft_gamlp3 + 0.2 * y_soft_gamlp4 \
+    #     + 0.2 * y_soft_gamlp5 + 0.2 * y_soft_gamlp6 + 0.2 * y_soft_gamlp7 + 0.2 * y_soft_gamlp8 + 0.2 * y_soft_gamlp9
+    # + 0.2 * y_soft_sagn0 + 0.2 * y_soft_sagn1 + \
+    # 0.2 * y_soft_sage + 0.1 * y_soft_gat
     # y_soft = y_soft_gamlp
+
     y_soft = y_soft.softmax(dim=-1).to(device)
     y_pred = y_soft.argmax(dim=-1)
     val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     print(f'Pre valid acc: {val_acc:.4f}', flush=True)
-
-    # y_soft = cs.correct(graph, y_soft, labels[mask_idx], mask_idx)
-    # y_soft = cs.smooth(graph, y_soft, labels[mask_idx], mask_idx)
-    # y_pred = y_soft.argmax(dim=-1)
-    # val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    # print(f'valid acc: {val_acc:.4f}', flush=True)
 
     # test
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
@@ -269,7 +209,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Base predictor(C&S)')
 
     # Dataset
-    parser.add_argument('--gpu', type=int, default=2, help='-1 for cpu')
+    parser.add_argument('--gpu', type=int, default=1, help='1 for cpu')
     parser.add_argument('--dataset', type=str, default='ogbn-arxiv', choices=['ogbn-arxiv', 'ogbn-products'])
     # Base predictor
     parser.add_argument('--model', type=str, default='mlp', choices=['mlp', 'linear'])

@@ -1,10 +1,11 @@
 cd "$(dirname $0)"
+
 python3 ../main.py \
---seed 1 \
+--seed 0 \
 --gpu 1 \
 --method R_GAMLP \
 --stages 150 \
---train-num-epochs 0  \
+--train-num-epochs 0 \
 --threshold 0.85 \
 --input-drop 0.2 \
 --att-drop 0.5 \
@@ -24,8 +25,10 @@ python3 ../main.py \
 --num-hops 6 \
 --hidden 1024 \
 --temp 0.001 \
+--num-runs 10 \
+--act leaky_relu \
 --all-train
-# --act leaky_relu \
+
 
 # --use-rlu \
 # --method R_GAMLP_RLU \

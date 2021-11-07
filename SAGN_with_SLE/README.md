@@ -2,7 +2,7 @@
 This repository is an implementation of paper: [Scalable and Adaptive Graph Neural Networks with Self-Label-Enhanced training](https://arxiv.org/abs/2104.09376)
 
 ## Requirements
-`pytorch dgl ogb pytorch-geometric`
+`pytorch dgl ogb`
 
 ## Statement
 Feel free to use any parts from our works, but remember to **cite our paper and repository**. **Introduce our methods** if your work is mostly based on ours. We think these are basic academic ethics.

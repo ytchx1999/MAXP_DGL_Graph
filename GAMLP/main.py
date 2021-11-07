@@ -194,36 +194,36 @@ def run(args, device):
         torch.save(preds, checkpt_file+f'_{stage}.pt')
         # torch.save(preds, f'./output/{args.dataset}/gamlp_{stage}.pt')
 
-    torch.save(preds, f'../dataset/gamlp_{args.seed}.pt')
+    # torch.save(preds, f'../dataset/gamlp_{args.seed+num_run}.pt')
 
-    if args.dataset == 'maxp':
-        with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
-            test_id_dict = pickle.load(f)
-        submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
-        with open(os.path.join('../dataset/csv_idx_map.pkl'), 'rb') as f:
-            idx_map = pickle.load(f)
-        preds = torch.argmax(preds, dim=-1)
-        test_seeds_list = test_nid
-        if args.all_train:
-            test_pred_list = preds[len(train_nid):len(train_nid)+len(test_nid)]
-        else:
-            test_pred_list = preds[len(train_nid)+len(val_nid):len(train_nid)+len(val_nid)+len(test_nid)]
+    # if args.dataset == 'maxp':
+    #     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
+    #         test_id_dict = pickle.load(f)
+    #     submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
+    #     with open(os.path.join('../dataset/csv_idx_map.pkl'), 'rb') as f:
+    #         idx_map = pickle.load(f)
+    #     preds = torch.argmax(preds, dim=-1)
+    #     test_seeds_list = test_nid
+    #     if args.all_train:
+    #         test_pred_list = preds[len(train_nid):len(train_nid)+len(test_nid)]
+    #     else:
+    #         test_pred_list = preds[len(train_nid)+len(val_nid):len(train_nid)+len(val_nid)+len(test_nid)]
 
-        # save results
-        for i, id in tqdm(enumerate(test_seeds_list)):
-            paper_id = test_id_dict[id.item()]
-            label = chr(int(test_pred_list[i].item() + 65))
+    #     # save results
+    #     for i, id in tqdm(enumerate(test_seeds_list)):
+    #         paper_id = test_id_dict[id.item()]
+    #         label = chr(int(test_pred_list[i].item() + 65))
 
-            # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
-            if paper_id in idx_map:
-                csv_index = idx_map[paper_id]
-                submit['label'][csv_index] = label
+    #         # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
+    #         if paper_id in idx_map:
+    #             csv_index = idx_map[paper_id]
+    #             submit['label'][csv_index] = label
 
-        if not os.path.exists('../outputs'):
-            os.makedirs('../outputs', exist_ok=True)
-        submit.to_csv(os.path.join('../outputs/', f'submit_gamlp_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+    #     if not os.path.exists('../outputs'):
+    #         os.makedirs('../outputs', exist_ok=True)
+    #     submit.to_csv(os.path.join('../outputs/', f'submit_gamlp_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
-        print("Done!", flush=True)
+    print("Done!", flush=True)
 
     return best_val, best_test, preds
 
@@ -240,7 +240,8 @@ def main(args):
         print(f"Run {i} start training", flush=True)
         set_seed(args.seed+i)
         best_val, best_test, preds = run(args, device)
-        np.save(f"output/{args.dataset}/output_{i}.npy", preds.numpy())
+        # np.save(f"output/{args.dataset}/output_{i}.npy", preds.numpy())
+        torch.save(preds, f'../dataset/gamlp_{args.seed+i}.pt')
         val_accs.append(best_val)
         test_accs.append(best_test)
 
@@ -275,7 +276,7 @@ if __name__ == "__main__":
                         help="number of feed-forward layers")
     parser.add_argument("--n-layers-3", type=int, default=4,
                         help="number of feed-forward layers")
-    parser.add_argument("--num-runs", type=int, default=1,
+    parser.add_argument("--num-runs", type=int, default=10,
                         help="number of times to repeat the experiment")
     parser.add_argument("--patience", type=int, default=100,
                         help="early stop of times of the experiment")

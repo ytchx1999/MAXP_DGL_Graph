@@ -28,7 +28,7 @@
 1. 用于数据预处理的4个Jupyter Notebook
 2. 用DGL构建的3个GNN模型(GCN,GraphSage和GAT)，以及训练模型所用的代码和辅助函数。
 
-## 依赖包：
+<!-- ## 依赖包：
 
 ```bash
 dgl==0.7.1
@@ -38,9 +38,11 @@ pandas
 numpy
 datetime
 tqdm
-```
+``` -->
 
 ## 环境安装
+依赖包见`requirement.txt`.
+
 ```bash
 pip install -r requirement.txt
 ```
@@ -50,6 +52,13 @@ pip install -r requirement.txt
 [查看项目的整个目录树.](#Tree)
 
 ### 运行jupyter进行数据预处理
+
+```bash
+cd MAXP_DGL_Graph/
+mkdir dataset
+mkdir outputs
+```
+
 对于4个Jupyter Notebook文件，请使用Jupyter环境运行，并注意把其中的竞赛数据文件所在的文件夹替换为你自己保存数据文件的文件夹。
 并记录下你处理完成后的数据文件所在的位置，供下面模型训练使用。
 
@@ -124,18 +133,19 @@ test结果保存在`../outputs/submit_sagn_xxxx-xx-xx.csv`中。
 
 ```bash
 cd GAMLP/scripts/
+# 10 runs with seed 0-9
 nohup bash train_maxp.sh > ../output/gamlp.log 2>&1 &
 
 # post process (model merge and c&s)
 cd GAMLP/
-python3 cs.py --all_train --gpu 1
+python3 cs.py --all_train --gpu 1 --num-ensemble 10
 ```
-inference logits保存在`../dataset/gamlp.pt`和`../dataset/gamlp_{seed}.pt`中。
+inference logits保存在`../dataset/gamlp_{seed}.pt`中。
 test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中。
 
 **模型融合 (所有模型先C&S)：**
 
-seed 0-9:
+seed 0-9 -- Soft Voting:
 | model | weight |
 |:-:|:-:|
 | GAMLP (seed 0) | 0.2 |

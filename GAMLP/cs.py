@@ -101,7 +101,7 @@ def main():
 
     y_soft_gamlp = []
 
-    for i in range(100):
+    for i in range(args.num_ensemble):
         if os.path.exists(f'../dataset/gamlp_{i}.pt'):
             y_soft_gamlp.append(torch.zeros((labels.shape[0], y_soft_gat.shape[1])))
             y_soft_gamlp[i][tr_va_te_nid] = torch.load(f'../dataset/gamlp_{i}.pt', map_location='cpu')
@@ -161,8 +161,8 @@ def main():
     y_soft = 0
     w = [0.2] * len(y_soft_gamlp)
     # w = [
-    #     0, 0, 0.5, 0, 0.5, 0, 0.5, 0.5, 0.5, 0,
-    #     0, 0, 0.5, 0, 0, 0.5, 0, 0, 0, 0
+    #     0.1, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.5, 0.5, 0.1,
+    #     0.1, 0.1, 0.5, 0.1, 0.1, 0.5, 0.1, 0.1, 0.1, 0.1
     # ]
     for i in range(len(y_soft_gamlp)):
         y_soft += (w[i] * y_soft_gamlp[i])
@@ -232,6 +232,7 @@ if __name__ == '__main__':
     parser.add_argument('--autoscale', action='store_true')
     parser.add_argument('--scale', type=float, default=1.5)
     parser.add_argument('--all_train', action='store_true')
+    parser.add_argument('--num-ensemble', type=int, default=10)
     parser.add_argument("--K", type=int, default=5,
                         help="Maximum hop for feature propagation")
     parser.add_argument("--label-K", type=int, default=9,

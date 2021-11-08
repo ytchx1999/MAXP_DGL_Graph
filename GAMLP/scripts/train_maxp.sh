@@ -4,7 +4,7 @@ python3 ../main.py \
 --seed 0 \
 --gpu 1 \
 --method R_GAMLP \
---stages 150 \
+--stages 151 \
 --train-num-epochs 0 \
 --threshold 0.85 \
 --input-drop 0.2 \
@@ -26,13 +26,14 @@ python3 ../main.py \
 --hidden 1024 \
 --temp 0.001 \
 --num-runs 10 \
---act leaky_relu \
+--act sigmoid \
 --all-train
 
 
 # --use-rlu \
 # --method R_GAMLP_RLU \
-# --act sigmoid \
+# --act leaky_relu \
+
 
 
 

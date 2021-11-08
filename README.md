@@ -7,6 +7,7 @@
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
+| 2021-11-08 | GAMLP (leaky-relu) + node2vec + C&S + Model Merge (+GAMLP_seed_{0-9}) | 55.3825306357653 |
 | 2021-11-06 | GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_{0-9}) | 55.3694749826675 |
 | 2021-11-05| GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_1, +SAGN_SE_stage_0, +SAGN_SE_stage_2, +SAGE, +GAT)  | 55.0993580220235 |
 | 2021-11-04| GAMLP + node2vec + C&S + Model Merge (+SAGN-SE, +SAGE, +GAT)  | 55.0070680604702 |

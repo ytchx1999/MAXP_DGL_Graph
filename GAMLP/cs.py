@@ -105,6 +105,9 @@ def main():
         if os.path.exists(f'../dataset/gamlp_{i}.pt'):
             y_soft_gamlp.append(torch.zeros((labels.shape[0], y_soft_gat.shape[1])))
             y_soft_gamlp[i][tr_va_te_nid] = torch.load(f'../dataset/gamlp_{i}.pt', map_location='cpu')
+        # if os.path.exists(f'../dataset/tmp-gamlp/gamlp_{i}.pt'):
+        #     y_soft_gamlp.append(torch.zeros((labels.shape[0], y_soft_gat.shape[1])))
+        #     y_soft_gamlp[i][tr_va_te_nid] = torch.load(f'../dataset/gamlp_{i}.pt', map_location='cpu')
         else:
             break
 

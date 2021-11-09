@@ -152,7 +152,7 @@ def run(args, device):
             gc.collect()
             start = time.time()
             if stage == 0:
-                loss, acc = train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator)
+                loss, acc = train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator, args)
             elif stage == 1:
                 loss, acc = train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device, feats, labels, label_emb, predict_prob, args.gama)
             else:
@@ -317,6 +317,9 @@ if __name__ == "__main__":
     parser.add_argument("--bns", action='store_true', default=False,
                         help="whether to process the input features")
     parser.add_argument("--all-train", action="store_true")
+    parser.add_argument('--step-size', type=float, default=1e-3)
+    parser.add_argument('-m', type=int, default=3)
+    parser.add_argument('--flag', action="store_true")
 
     args = parser.parse_args()
     print(args, flush=True)

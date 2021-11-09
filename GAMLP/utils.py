@@ -96,7 +96,7 @@ def train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device,
     return loss, approx_acc
 
 
-def train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator):
+def train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator, args):
     model.train()
     device = labels.device
     total_loss = 0
@@ -105,14 +105,48 @@ def train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, ev
     y_pred = []
     for batch in train_loader:
         batch_feats = [x[batch].to(device) for x in feats]
-        if label_emb != None:
-            output_att = model(batch_feats, label_emb[batch].to(device))
+        if args.flag:
+            perturbs = [torch.FloatTensor(*x.shape).uniform_(-args.step_size, args.step_size).to(device) for x in batch_feats]
+            perturbs = [perturb.requires_grad_() for perturb in perturbs]
+
+            # perturbs = torch.FloatTensor(*batch_feats[0].shape).uniform_(-args.step_size, args.step_size).to(device)
+            # perturbs.requires_grad_()
+            # fix ...
+            feat_inputs = [batch_feats[i] + perturbs[i] for i in range(len(batch_feats))]
+            # feat_inputs = [batch_feats[i] + perturbs for i in range(len(batch_feats))]
         else:
-            output_att = model(batch_feats)
-        y_true.append(labels[batch].to(torch.long))
-        y_pred.append(output_att.argmax(dim=-1, keepdim=True).cpu())
+            feat_inputs = batch_feats
+        if label_emb != None:
+            output_att = model(feat_inputs, label_emb[batch].to(device))
+        else:
+            output_att = model(feat_inputs)
+
         L1 = loss_fcn(output_att, labels[batch])
         loss_train = L1
+
+        if args.flag:
+            loss_train /= args.m
+            for _ in range(args.m-1):
+                loss_train.backward()
+                perturb_datas = [perturb.detach() + args.step_size * torch.sign(perturb.grad.detach()) for perturb in perturbs]
+                for i, perturb in enumerate(perturbs):
+                    perturb.data = perturb_datas[i].data
+                    perturb.grad[:] = 0
+
+                feat_inputs = [batch_feats[i] + perturbs[i] for i in range(len(batch_feats))]
+
+                # train_batch_logits = model(blocks, feat_input)
+                if label_emb != None:
+                    output_att = model(feat_inputs, label_emb[batch].to(device))
+                else:
+                    output_att = model(feat_inputs)
+                # train_loss = cross_entropy(train_batch_logits, batch_labels)
+                L1 = loss_fcn(output_att, labels[batch])
+                loss_train = L1
+                loss_train /= args.m
+
+        y_true.append(labels[batch].to(torch.long))
+        y_pred.append(output_att.argmax(dim=-1, keepdim=True).cpu())
         total_loss = loss_train
         optimizer.zero_grad()
         loss_train.backward()

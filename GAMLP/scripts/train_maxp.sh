@@ -2,7 +2,7 @@ cd "$(dirname $0)"
 
 python3 ../main.py \
 --seed 0 \
---gpu 0 \
+--gpu 1 \
 --method R_GAMLP \
 --stages 101 \
 --train-num-epochs 0 \
@@ -14,7 +14,7 @@ python3 ../main.py \
 --residual \
 --dataset maxp \
 --num-runs 1 \
---eval 5 \
+--eval 10 \
 --batch 5000 \
 --patience 300 \
 --n-layers-1 4 \

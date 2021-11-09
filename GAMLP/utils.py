@@ -104,6 +104,8 @@ def train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, ev
     y_true = []
     y_pred = []
     for batch in train_loader:
+        optimizer.zero_grad()
+
         batch_feats = [x[batch].to(device) for x in feats]
         if args.flag:
             perturbs = [torch.FloatTensor(*x.shape).uniform_(-args.step_size, args.step_size).to(device) for x in batch_feats]
@@ -148,7 +150,7 @@ def train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, ev
         y_true.append(labels[batch].to(torch.long))
         y_pred.append(output_att.argmax(dim=-1, keepdim=True).cpu())
         total_loss = loss_train
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
         loss_train.backward()
         optimizer.step()
         iter_num += 1

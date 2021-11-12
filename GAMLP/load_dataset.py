@@ -210,10 +210,27 @@ def load_dataset(name, device, args):
         g = dgl.to_bidirected(g, copy_ndata=True)
         g = dgl.add_self_loop(g)
 
+        # 419 no feature nodes -- mean aggr of there neighbor
+        node_feat_new = node_feat.clone()
+        diff_node_feat = torch.zeros((419, node_feat.shape[1]))
+        node_feat_new[-419:, :] = diff_node_feat
+
+        with g.local_scope():
+            g.ndata['h'] = node_feat_new
+            g.update_all(fn.copy_u('h', 'm'),
+                         fn.mean('m', 'h'))
+            node_feat_new = g.ndata.pop('h')
+
+        node_feat[-419:, :] = node_feat_new[-419:, :].clone()
+        print("mean aggr done!", flush=True)
+
         print("Use node2vec embedding...", flush=True)
         emb = torch.load('../dataset/emb.pt', map_location='cpu')
         emb.requires_grad = False
         node_feat = torch.cat([node_feat, emb], dim=1)
+
+        # y_soft = torch.load('../dataset/y_soft.pt', map_location='cpu')
+        # node_feat = torch.cat([node_feat, y_soft], dim=1)
 
         g.ndata["feat"] = node_feat.float()
         g.ndata["labels"] = labels

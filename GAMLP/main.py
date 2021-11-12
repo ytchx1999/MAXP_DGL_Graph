@@ -141,6 +141,7 @@ def run(args, device):
         loss_fcn = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
                                      weight_decay=args.weight_decay)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.2)  # lr adjustment
 
         # Start training
         best_epoch = 0
@@ -185,6 +186,8 @@ def run(args, device):
                 log += "Best Epoch {},Val {:.4f}, Test {:.4f}".format(
                     best_epoch, best_val, best_test)
             print(log, flush=True)
+
+            scheduler.step()
 
         print("Best Epoch {}, Val {:.4f}, Test {:.4f}".format(
             best_epoch, best_val, best_test), flush=True)

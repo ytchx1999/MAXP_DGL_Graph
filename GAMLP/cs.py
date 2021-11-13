@@ -231,7 +231,7 @@ if __name__ == '__main__':
     parser.add_argument('--correction-adj', type=str, default='DAD')
     parser.add_argument('--num-smoothing-layers', type=int, default=50)
     parser.add_argument('--smoothing-alpha', type=float, default=0.756)  # 0.756
-    parser.add_argument('--smoothing-adj', type=str, default='DAD')
+    parser.add_argument('--smoothing-adj', type=str, default='AD')
     parser.add_argument('--autoscale', action='store_true')
     parser.add_argument('--scale', type=float, default=1.5)
     parser.add_argument('--all_train', action='store_true')

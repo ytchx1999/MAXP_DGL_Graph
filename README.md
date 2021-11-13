@@ -7,6 +7,7 @@
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
+| 2021-11-13 | GAMLP (leaky-relu, 9 hops) + node2vec + C&S (DAD, AD) + Model Merge (+GAMLP_seed_{0-9}) + lr adjustment | 55.5081350224647 |
 | 2021-11-08 | GAMLP (leaky-relu) + node2vec + C&S + Model Merge (+GAMLP_seed_{0-9}) | 55.3825306357653 |
 | 2021-11-06 | GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_{0-9}) | 55.3694749826675 |
 | 2021-11-05| GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_1, +SAGN_SE_stage_0, +SAGN_SE_stage_2, +SAGE, +GAT)  | 55.0993580220235 |
@@ -29,7 +30,7 @@
 1. 用于数据预处理的4个Jupyter Notebook
 2. 用DGL构建的3个GNN模型(GCN,GraphSage和GAT)，以及训练模型所用的代码和辅助函数。
 
-<!-- ## 依赖包：
+## 依赖包：
 
 ```bash
 dgl==0.7.1
@@ -39,7 +40,8 @@ pandas
 numpy
 datetime
 tqdm
-``` -->
+...
+```
 
 ## 环境安装
 依赖包见`requirement.txt`.

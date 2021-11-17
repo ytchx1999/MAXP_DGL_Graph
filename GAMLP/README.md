@@ -28,10 +28,14 @@ For **MAXP**:
 
 ```bash
 cd scripts/
-nohup bash train_maxp.sh > ../output/gamlp.log 2>&1 & 
+# run all trains with seed 0-9
+nohup bash train_maxp_kfold.sh > ../output/gamlp.log 2>&1 &
+# run k-fold cv with diff seeds
+nohup bash train_maxp_all.sh > ../output/gamlp1.log 2>&1 &
 
-# post process (model merge and c&s)
-python3 cs.py --all_train --gpu 1 --num-ensemble 10
+# post process + ensemble (model merge and c&s)
+cd GAMLP/
+python3 ensemble.py --all_train --gpu 1 
 
 # or
 python3 main.py --use-rlu --method R_GAMLP_RLU --stages 10 10 10 --train-num-epochs 0 0 0 --threshold 0.85 --input-drop 0.2 --att-drop 0.5 --label-drop 0 --pre-process --residual --dataset maxp --num-runs 1 --eval 5 --act leaky_relu --batch 50000 --patience 300 --n-layers-1 4 --n-layers-2 4 --bns --gama 0.1 --all-train

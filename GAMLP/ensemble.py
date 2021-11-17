@@ -81,48 +81,45 @@ def main():
 
     # if args.pretrain:
     print('---------- Before ----------', flush=True)
-    # model.load_state_dict(torch.load(f'base/{args.dataset}-{args.model}.pt'))
-    # model.eval()
 
-    # y_soft = torch.rand(labels.shape[0], 23)
-    y_soft_gat = torch.load('../dataset/y_soft.pt', map_location='cpu')
-
-    # use_labels_False_use_feats_True_K_5_label_K_9_probs_seed_0_stage_2.pt
     tr_va_te_nid = torch.cat([train_nid, val_nid, test_nid], dim=0)
-    # preds_path = generate_preds_path(args)
-    # print(preds_path)
-    # probs_list = load_output_files(preds_path)
-    # probs0 = probs_list[0]
-    # probs1 = probs_list[1]
-    # y_soft_sagn0 = torch.zeros((labels.shape[0], probs0.shape[1]))
-    # y_soft_sagn0[tr_va_te_nid] = probs0
-    # y_soft_sagn1 = torch.zeros((labels.shape[0], probs1.shape[1]))
-    # y_soft_sagn1[tr_va_te_nid] = probs1
+
+    y_soft_kfold = []
+
+    idx = 0
+    for seed in range(args.num_seed):
+        for k in range(args.kfold):
+            if os.path.exists(f'../dataset/gamlp_{k}fold_seed{seed}.pt'):
+                y_kfold = torch.load(f'../dataset/gamlp_{k}fold_seed{seed}.pt', map_location='cpu')
+                y_soft_kfold.append(torch.zeros((labels.shape[0], y_kfold.shape[1])))
+                y_soft_kfold[idx][tr_va_te_nid] = y_kfold
+                idx += 1
+            else:
+                break
 
     y_soft_gamlp = []
 
-    # y_kfold = torch.load('./output/maxp/gamlp_0fold_seed0.pt', map_location='cpu')
-    # y_kfold_soft = torch.zeros((labels.shape[0], y_kfold.shape[1]))
-    # y_kfold_soft[tr_va_te_nid] = y_kfold
-
     for i in range(args.num_ensemble):
         if os.path.exists(f'../dataset/gamlp_{i}.pt'):
-            y_soft_gamlp.append(torch.zeros((labels.shape[0], y_soft_gat.shape[1])))
-            y_soft_gamlp[i][tr_va_te_nid] = torch.load(f'../dataset/gamlp_{i}.pt', map_location='cpu')
-        # if os.path.exists(f'../dataset/tmp-gamlp/gamlp_{i}.pt'):
-        #     y_soft_gamlp.append(torch.zeros((labels.shape[0], y_soft_gat.shape[1])))
-        #     y_soft_gamlp[i][tr_va_te_nid] = torch.load(f'../dataset/gamlp_{i}.pt', map_location='cpu')
+            y_gamlp = torch.load(f'../dataset/gamlp_{i}.pt', map_location='cpu')
+            y_soft_gamlp.append(torch.zeros((labels.shape[0], y_gamlp.shape[1])))
+            y_soft_gamlp[i][tr_va_te_nid] = y_gamlp
         else:
             break
 
-    # y_soft_sage = None
-    # y_soft_conv = None
-    # if os.path.exists('../dataset/y_soft_sage.pt'):
-    #     y_soft_sage = torch.load('../dataset/y_soft_sage.pt', map_location='cpu')
-    # if os.path.exists('../dataset/y_soft_sage.pt'):
-    #     y_soft_conv = torch.load('../dataset/y_soft_conv.pt', map_location='cpu')
-    # if y_soft_sage != None and y_soft_conv != None:
-    #     y_soft = 0.6 * y_soft + 0.2 * y_soft_sage + 0.2 * y_soft_conv
+    y_pred_kfold = []
+    val_acc_kfold = []
+
+    for i in range(len(y_soft_kfold)):
+        y_pred_kfold.append(None)
+        val_acc_kfold.append(None)
+
+    for i in range(len(y_soft_kfold)):
+        # y_soft_kfold[i] = y_soft_kfold[i].softmax(dim=-1).to(device)
+        y_soft_kfold[i] = y_soft_kfold[i].to(device)
+        y_pred_kfold[i] = y_soft_kfold[i].argmax(dim=-1)
+        val_acc_kfold[i] = torch.sum(y_pred_kfold[i][val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+        print(f'Pre valid acc: {val_acc_kfold[i]:.4f}', flush=True)
 
     y_pred_gamlp = []
     val_acc_gamlp = []
@@ -130,6 +127,8 @@ def main():
     for i in range(len(y_soft_gamlp)):
         y_pred_gamlp.append(None)
         val_acc_gamlp.append(None)
+
+    print("all train", flush=True)
 
     for i in range(len(y_soft_gamlp)):
         y_soft_gamlp[i] = y_soft_gamlp[i].to(device)
@@ -152,12 +151,15 @@ def main():
     else:
         mask_idx = train_nid
 
-    # y_kfold_soft = y_kfold_soft.softmax(dim=-1).to(device)
-    # y_kfold_soft = cs.correct(graph, y_kfold_soft, labels[mask_idx], mask_idx)
-    # y_kfold_soft = cs.smooth(graph, y_kfold_soft, labels[mask_idx], mask_idx)
-    # y_pred = y_kfold_soft.argmax(dim=-1)
-    # val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    # print(f'Final valid acc: {val_acc:.4f}', flush=True)
+    for i in range(len(y_soft_kfold)):
+        y_soft_kfold[i] = y_soft_kfold[i].softmax(dim=-1).to(device)
+        y_soft_kfold[i] = cs.correct(graph, y_soft_kfold[i], labels[mask_idx], mask_idx)
+        y_soft_kfold[i] = cs.smooth(graph, y_soft_kfold[i], labels[mask_idx], mask_idx)
+        y_pred_kfold[i] = y_soft_kfold[i].argmax(dim=-1)
+        val_acc_kfold[i] = torch.sum(y_pred_kfold[i][val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
+        print(f'Valid acc: {val_acc_kfold[i]:.4f}', flush=True)
+
+    print("all train", flush=True)
 
     for i in range(len(y_soft_gamlp)):
         y_soft_gamlp[i] = y_soft_gamlp[i].softmax(dim=-1).to(device)
@@ -167,29 +169,21 @@ def main():
         val_acc_gamlp[i] = torch.sum(y_pred_gamlp[i][val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
         print(f'Valid acc: {val_acc_gamlp[i]:.4f}', flush=True)
 
-    # y_soft = cs.correct(graph, y_soft, labels[mask_idx], mask_idx)
-    # y_soft = cs.smooth(graph, y_soft, labels[mask_idx], mask_idx)
-    # y_pred = y_soft.argmax(dim=-1)
-    # val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
-    # print(f'Final valid acc: {val_acc:.4f}', flush=True)
-
     y_soft = 0
-    w = [0.2] * len(y_soft_gamlp)
+    w = [0.2] * len(y_soft_kfold)
     # w = [
     #     0.1, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.5, 0.5, 0.1,
     #     0.1, 0.1, 0.5, 0.1, 0.1, 0.5, 0.1, 0.1, 0.1, 0.1
     # ]
+    for i in range(len(y_soft_kfold)):
+        y_soft += (w[i] * y_soft_kfold[i])
+
     for i in range(len(y_soft_gamlp)):
         y_soft += (w[i] * y_soft_gamlp[i])
-    # y_soft = y_soft_gamlp[2]
-
-    # y_soft = 0.2 * y_soft_gamlp + 0.2 * y_soft_gamlp1 + 0.2 * y_soft_gamlp2 + 0.2 * y_soft_gamlp3 + 0.2 * y_soft_gamlp4 \
-    #     + 0.2 * y_soft_gamlp5 + 0.2 * y_soft_gamlp6 + 0.2 * y_soft_gamlp7 + 0.2 * y_soft_gamlp8 + 0.2 * y_soft_gamlp9
-    # + 0.2 * y_soft_sagn0 + 0.2 * y_soft_sagn1 + \
-    # 0.2 * y_soft_sage + 0.1 * y_soft_gat
-    # y_soft = y_soft_gamlp
 
     y_soft = y_soft.softmax(dim=-1).to(device)
+    # y_soft = cs.correct(graph, y_soft, labels[mask_idx], mask_idx)
+    # y_soft = cs.smooth(graph, y_soft, labels[mask_idx], mask_idx)
     y_pred = y_soft.argmax(dim=-1)
     val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     print(f'Pre valid acc: {val_acc:.4f}', flush=True)
@@ -213,7 +207,7 @@ def main():
 
     if not os.path.exists('../outputs'):
         os.makedirs('../outputs', exist_ok=True)
-    submit.to_csv(os.path.join('../outputs/', f'submit_gamlp_cs_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+    submit.to_csv(os.path.join('../outputs/', f'submit_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
     print("Done!", flush=True)
 
@@ -248,8 +242,8 @@ if __name__ == '__main__':
     parser.add_argument('--autoscale', action='store_true')
     parser.add_argument('--scale', type=float, default=1.5)
     parser.add_argument('--all_train', action='store_true')
-    parser.add_argument('--num-ensemble', type=int, default=10)
-    parser.add_argument('--num-seed', type=int, default=5)
+    parser.add_argument('--num-ensemble', type=int, default=0)
+    parser.add_argument('--num-seed', type=int, default=3)
     parser.add_argument('--kfold', type=int, default=8)
     parser.add_argument("--K", type=int, default=5,
                         help="Maximum hop for feature propagation")

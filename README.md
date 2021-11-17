@@ -7,6 +7,7 @@
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
+| 2021-11-17 | GAMLP (leaky-relu, 9 hops, 8-fold) + node2vec + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0-1})  |  55.53829808307 |
 | 2021-11-13 | GAMLP (leaky-relu, 9 hops) + node2vec + C&S (DAD, AD) + Model Merge (+GAMLP_seed_{0-9}) + lr adjustment | 55.5081350224647 |
 | 2021-11-08 | GAMLP (leaky-relu) + node2vec + C&S + Model Merge (+GAMLP_seed_{0-9}) | 55.3825306357653 |
 | 2021-11-06 | GAMLP + node2vec + C&S + Model Merge (+GAMLP_seed_{0-9}) | 55.3694749826675 |
@@ -136,25 +137,28 @@ test结果保存在`../outputs/submit_sagn_xxxx-xx-xx.csv`中。
 
 ```bash
 cd GAMLP/scripts/
-# 10 runs with seed 0-9
-nohup bash train_maxp.sh > ../output/gamlp.log 2>&1 &
+# run all trains with seed 0-9
+nohup bash train_maxp_kfold.sh > ../output/gamlp.log 2>&1 &
+# run k-fold cv with diff seeds
+nohup bash train_maxp_all.sh > ../output/gamlp1.log 2>&1 &
 
-# post process (model merge and c&s)
+# post process + ensemble (model merge and c&s)
 cd GAMLP/
-python3 cs.py --all_train --gpu 1 --num-ensemble 10
+python3 ensemble.py --all_train --gpu 1 
 ```
-inference logits保存在`../dataset/gamlp_{seed}.pt`中。
-test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中。
+inference logits保存在`../dataset/gamlp_{seed}.pt`(all train)和`../dataset/gamlp_{k}fold_seed{seed}.pt`(kfold)中。
+<!-- All train的test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中，k-fold的 -->
+最终ensemble的test结果保存在`../outputs/submit_gamlp_emsem_xxxx-xx-xx.csv`中。
 
 **模型融合 (所有模型先C&S)：**
 
-seed 0-9 -- Soft Voting:
+K-fold cross-validation -- Soft Voting: (16 ensemble)
 | model | weight |
 |:-:|:-:|
-| GAMLP (seed 0) | 0.2 |
-| GAMLP (seed 1) | 0.2 |
+| GAMLP (seed 0, fold 0) | 0.2 |
+| GAMLP (seed 0, fold 1) | 0.2 |
 | ... | ... |
-| GAMLP (seed 9) | 0.2 |
+| GAMLP (seed 1, fold 7) | 0.2 |
 
 
 

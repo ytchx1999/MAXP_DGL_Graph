@@ -19,6 +19,7 @@ import os
 import pickle
 import pandas as pd
 from tqdm import tqdm
+from sklearn.model_selection import KFold
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -33,7 +34,7 @@ def get_n_params(model):
     return pp
 
 
-def run(args, device):
+def run(args, device, seed):
     if not os.path.exists(f'./output/{args.dataset}'):
         os.makedirs('./output/{args.dataset}')
     checkpt_file = f"./output/{args.dataset}/"+uuid.uuid4().hex
@@ -82,120 +83,152 @@ def run(args, device):
         feats, labels, in_size, num_classes, \
             train_nid, val_nid, test_nid, evaluator, label_emb = data
 
-        if args.all_train:
-            train_nid = torch.cat([train_nid, val_nid], dim=0)
+        train_nid_new = torch.arange(len(train_nid))
+        val_nid_new = torch.arange(len(train_nid), len(train_nid)+len(val_nid))
+        test_nid_new = torch.arange(len(train_nid)+len(val_nid), len(train_nid)+len(val_nid)+len(test_nid))
 
-        if stage == 0:
-            train_loader = torch.utils.data.DataLoader(
-                torch.arange(len(train_nid)), batch_size=args.batch_size, shuffle=True, drop_last=False)
-        else:
-            train_loader = torch.utils.data.DataLoader(torch.arange(len(train_nid)), batch_size=int(args.batch_size*len(train_nid)/(len(enhance_idx)+len(train_nid))), shuffle=True, drop_last=False)
+        train_val = torch.cat([train_nid_new, val_nid_new], dim=0)
 
-        if args.all_train:
-            val_loader = torch.utils.data.DataLoader(
-                torch.arange(len(train_nid)-len(val_nid), len(train_nid)), batch_size=args.batch_size, shuffle=False, drop_last=False)
-            test_loader = torch.utils.data.DataLoader(
-                torch.arange(len(train_nid), len(train_nid)+len(test_nid)), batch_size=args.batch_size,
-                shuffle=False, drop_last=False)
-            all_loader = torch.utils.data.DataLoader(
-                torch.arange(len(train_nid)+len(test_nid)), batch_size=args.batch_size,
-                shuffle=False, drop_last=False)
-        else:
-            val_loader = torch.utils.data.DataLoader(
-                torch.arange(len(train_nid), len(train_nid)+len(val_nid)), batch_size=args.batch_size, shuffle=False, drop_last=False)
-            test_loader = torch.utils.data.DataLoader(
-                torch.arange(len(train_nid)+len(val_nid), len(train_nid)+len(val_nid)+len(test_nid)), batch_size=args.batch_size,
-                shuffle=False, drop_last=False)
-            all_loader = torch.utils.data.DataLoader(
-                torch.arange(len(train_nid)+len(val_nid)+len(test_nid)), batch_size=args.batch_size,
-                shuffle=False, drop_last=False)
+        kf = KFold(n_splits=args.kfold, shuffle=True, random_state=seed)  # k fold split
+        train_vals = [i for i in kf.split(train_val)]
 
-        train_node_nums = len(train_nid)
-        valid_node_nums = len(val_nid)
-        test_node_nums = len(test_nid)
-        if args.all_train:
-            total_num_nodes = len(train_nid) + len(test_nid)
-        else:
-            total_num_nodes = len(train_nid) + len(val_nid) + len(test_nid)
+        # k fold cv
+        for k, (train_idx, val_idx) in enumerate(train_vals):
+            print('-'*50, flush=True)
+            print("Run: {}, Fold: {}".format(seed, k), flush=True)
+            if args.all_train:
+                train_nid = torch.cat([train_nid, val_nid], dim=0)
 
-        #num_hops = args.num_hops + 1
-
-        if args.use_rlu == False:
-            print("not use rlu", flush=True)
-            if args.dataset == "ogbn-mag":
-                _, num_feats, in_feats = feats[0].shape
-                model = gen_model_mag(args, num_feats, in_feats, num_classes)
-            else:
-                model = gen_model(args, in_size, num_classes)
-        else:
-            print("use rlu", flush=True)
-            if args.dataset == "ogbn-mag":
-                _, num_feats, in_feats = feats[0].shape
-                model = gen_model_mag_rlu(args, num_feats, in_feats, num_classes)
-            else:
-                model = gen_model_rlu(args, in_size, num_classes)
-        print(model, flush=True)
-        model = model.to(device)
-        print("# Params:", get_n_params(model), flush=True)
-
-        loss_fcn = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
-                                     weight_decay=args.weight_decay)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.2)  # lr adjustment
-
-        # Start training
-        best_epoch = 0
-        best_val = 0
-        best_test = 0
-        count = 0
-
-        for epoch in range(epochs):
-            gc.collect()
-            start = time.time()
-            if stage == 0:
-                loss, acc = train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator, args)
-            elif stage == 1:
-                loss, acc = train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device, feats, labels, label_emb, predict_prob, args.gama)
-            else:
-                loss, acc = train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device, feats, labels, label_emb, predict_prob, args.gama)
-            end = time.time()
-
-            log = "Epoch {}, Time(s): {:.4f},Train loss: {:.4f}, Train acc: {:.4f} ".format(epoch, end - start, loss, acc*100)
-            if epoch % args.eval_every == 0 and epoch > args.train_num_epochs[stage]:
-                with torch.no_grad():
-                    acc = test(model, feats, labels, val_loader, evaluator,
-                               label_emb)
-                end = time.time()
-                log += "Epoch {}, Time(s): {:.4f}, ".format(epoch, end - start)
-                log += "Val {:.4f}, ".format(acc)
-                if acc > best_val:
-                    best_epoch = epoch
-                    best_val = acc
-
-                    if args.dataset == 'maxp':
-                        best_test = 0.
-                    else:
-                        best_test = test(model, feats, labels, test_loader, evaluator,
-                                         label_emb)
-                    torch.save(model.state_dict(), checkpt_file+f'_{stage}.pkl')
-                    count = 0
+                if stage == 0:
+                    train_loader = torch.utils.data.DataLoader(
+                        torch.arange(len(train_nid)), batch_size=args.batch_size, shuffle=True, drop_last=False)
                 else:
-                    count = count+args.eval_every
-                    if count >= args.patience:
-                        break
-                log += "Best Epoch {},Val {:.4f}, Test {:.4f}".format(
-                    best_epoch, best_val, best_test)
-            print(log, flush=True)
+                    train_loader = torch.utils.data.DataLoader(torch.arange(len(train_nid)), batch_size=int(
+                        args.batch_size*len(train_nid)/(len(enhance_idx)+len(train_nid))), shuffle=True, drop_last=False)
 
-            scheduler.step()
+                val_loader = torch.utils.data.DataLoader(
+                    torch.arange(len(train_nid)-len(val_nid), len(train_nid)), batch_size=args.batch_size, shuffle=False, drop_last=False)
+                test_loader = torch.utils.data.DataLoader(
+                    torch.arange(len(train_nid), len(train_nid)+len(test_nid)), batch_size=args.batch_size,
+                    shuffle=False, drop_last=False)
+                all_loader = torch.utils.data.DataLoader(
+                    torch.arange(len(train_nid)+len(test_nid)), batch_size=args.batch_size,
+                    shuffle=False, drop_last=False)
 
-        print("Best Epoch {}, Val {:.4f}, Test {:.4f}".format(
-            best_epoch, best_val, best_test), flush=True)
+            else:
+                train_loader = torch.utils.data.DataLoader(
+                    train_idx, batch_size=args.batch_size, shuffle=True, drop_last=False)
+                val_loader = torch.utils.data.DataLoader(
+                    val_idx, batch_size=args.batch_size, shuffle=False, drop_last=False)
+                test_loader = torch.utils.data.DataLoader(
+                    torch.arange(len(train_nid)+len(val_nid), len(train_nid)+len(val_nid)+len(test_nid)), batch_size=args.batch_size,
+                    shuffle=False, drop_last=False)
+                all_loader = torch.utils.data.DataLoader(
+                    torch.arange(len(train_nid)+len(val_nid)+len(test_nid)), batch_size=args.batch_size,
+                    shuffle=False, drop_last=False)
 
-        model.load_state_dict(torch.load(checkpt_file+f'_{stage}.pkl'))
-        preds = gen_output_torch(model, feats, all_loader, labels.device, label_emb)
-        torch.save(preds, checkpt_file+f'_{stage}.pt')
-        # torch.save(preds, f'./output/{args.dataset}/gamlp_{stage}.pt')
+                # train_loader = torch.utils.data.DataLoader(
+                #     torch.arange(len(train_nid)), batch_size=args.batch_size, shuffle=True, drop_last=False)
+                # val_loader = torch.utils.data.DataLoader(
+                #     torch.arange(len(train_nid), len(train_nid)+len(val_nid)), batch_size=args.batch_size, shuffle=False, drop_last=False)
+                # test_loader = torch.utils.data.DataLoader(
+                #     torch.arange(len(train_nid)+len(val_nid), len(train_nid)+len(val_nid)+len(test_nid)), batch_size=args.batch_size,
+                #     shuffle=False, drop_last=False)
+                # all_loader = torch.utils.data.DataLoader(
+                #     torch.arange(len(train_nid)+len(val_nid)+len(test_nid)), batch_size=args.batch_size,
+                #     shuffle=False, drop_last=False)
+
+            train_node_nums = len(train_nid)
+            valid_node_nums = len(val_nid)
+            test_node_nums = len(test_nid)
+            if args.all_train:
+                total_num_nodes = len(train_nid) + len(test_nid)
+            else:
+                total_num_nodes = len(train_nid) + len(val_nid) + len(test_nid)
+
+            #num_hops = args.num_hops + 1
+
+            if args.use_rlu == False:
+                print("not use rlu", flush=True)
+                if args.dataset == "ogbn-mag":
+                    _, num_feats, in_feats = feats[0].shape
+                    model = gen_model_mag(args, num_feats, in_feats, num_classes)
+                else:
+                    model = gen_model(args, in_size, num_classes)
+            else:
+                print("use rlu", flush=True)
+                if args.dataset == "ogbn-mag":
+                    _, num_feats, in_feats = feats[0].shape
+                    model = gen_model_mag_rlu(args, num_feats, in_feats, num_classes)
+                else:
+                    model = gen_model_rlu(args, in_size, num_classes)
+            print(model, flush=True)
+            model = model.to(device)
+            print("# Params:", get_n_params(model), flush=True)
+
+            loss_fcn = nn.CrossEntropyLoss()
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
+                                         weight_decay=args.weight_decay)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.2)  # lr adjustment
+
+            # Start training
+            best_epoch = 0
+            best_val = 0
+            best_test = 0
+            count = 0
+
+            for epoch in range(epochs):
+                gc.collect()
+                start = time.time()
+                if stage == 0:
+                    loss, acc = train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator, args)
+                elif stage == 1:
+                    loss, acc = train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device, feats, labels, label_emb, predict_prob, args.gama)
+                else:
+                    loss, acc = train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device, feats, labels, label_emb, predict_prob, args.gama)
+                end = time.time()
+
+                log = "Run: {}, Fold: {}, Epoch {}, Time(s): {:.4f},Train loss: {:.4f}, Train acc: {:.4f} ".format(seed, k, epoch, end - start, loss, acc*100)
+                if epoch % args.eval_every == 0 and epoch > args.train_num_epochs[stage]:
+                    with torch.no_grad():
+                        acc = test(model, feats, labels, val_loader, evaluator,
+                                   label_emb)
+                    end = time.time()
+                    log += "Epoch {}, Time(s): {:.4f}, ".format(epoch, end - start)
+                    log += "Val {:.4f}, ".format(acc)
+                    if acc > best_val:
+                        best_epoch = epoch
+                        best_val = acc
+
+                        if args.dataset == 'maxp':
+                            best_test = 0.
+                        else:
+                            best_test = test(model, feats, labels, test_loader, evaluator,
+                                             label_emb)
+                        torch.save(model.state_dict(), checkpt_file+f'_{stage}.pkl')
+                        count = 0
+                    else:
+                        count = count+args.eval_every
+                        if count >= args.patience:
+                            break
+                    log += "Best Epoch {},Val {:.4f}, Test {:.4f}".format(
+                        best_epoch, best_val, best_test)
+                print(log, flush=True)
+
+                scheduler.step()
+
+            print("Run: {}, Fold: {}, Best Epoch {}, Val {:.4f}, Test {:.4f}".format(
+                seed, k, best_epoch, best_val, best_test), flush=True)
+
+            model.load_state_dict(torch.load(checkpt_file+f'_{stage}.pkl'))
+            preds = gen_output_torch(model, feats, all_loader, labels.device, label_emb)
+            torch.save(preds, checkpt_file+f'_{stage}.pt')
+
+            if args.all_train:
+                torch.save(preds, f'../dataset/gamlp_{seed}.pt')
+                break
+            else:
+                torch.save(preds, f'../dataset/gamlp_{k}fold_seed{seed}.pt')
 
     # torch.save(preds, f'../dataset/gamlp_{args.seed+num_run}.pt')
 
@@ -242,9 +275,9 @@ def main(args):
     for i in range(args.num_runs):
         print(f"Run {i} start training", flush=True)
         set_seed(args.seed+i)
-        best_val, best_test, preds = run(args, device)
+        best_val, best_test, preds = run(args, device, args.seed+i)
         # np.save(f"output/{args.dataset}/output_{i}.npy", preds.numpy())
-        torch.save(preds, f'../dataset/gamlp_{args.seed+i}.pt')
+        # torch.save(preds, f'../dataset/gamlp_{args.seed+i}.pt')
         val_accs.append(best_val)
         test_accs.append(best_test)
 
@@ -323,6 +356,7 @@ if __name__ == "__main__":
     parser.add_argument('--step-size', type=float, default=1e-3)
     parser.add_argument('-m', type=int, default=3)
     parser.add_argument('--flag', action="store_true")
+    parser.add_argument('--kfold', type=int, default=8)
 
     args = parser.parse_args()
     print(args, flush=True)

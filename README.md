@@ -92,7 +92,7 @@ cd gnn/
 # generate index map
 python csv_idx_map.py
 # then run gnn in backward
-nohup python3 model_train.py --GPU 1 --use_emb sgc --use_label --flag --all_train > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb node2vec --use_label --flag --all_train > ../outputs/train1.log 2>&1 &
 # check the result in terminal
 tail -f ../outputs/train1.log
 
@@ -108,7 +108,7 @@ test结果保存在`../outputs/submit_xxxx-xx-xx.csv`中。
 # pretrain model in backward
 cd gnn/
 # graphattn
-nohup python3 model_train.py --GPU 1 --use_emb sgc --save_emb --flag --all_train > ../outputs/train1.log 2>&1 &
+nohup python3 model_train.py --GPU 1 --use_emb node2vec --save_emb --all_train > ../outputs/train1.log 2>&1 &
 # graphsage
 nohup python3 model_train.py --GPU 0 --use_emb node2vec --save_emb --gnn_model graphsage --flag --all_train > ../outputs/train.log 2>&1 &
 # graphconv

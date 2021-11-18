@@ -229,8 +229,8 @@ def load_dataset(name, device, args):
         emb.requires_grad = False
         node_feat = torch.cat([node_feat, emb], dim=1)
 
-        # y_soft = torch.load('../dataset/y_soft.pt', map_location='cpu')
-        # node_feat = torch.cat([node_feat, y_soft], dim=1)
+        # y_soft_gat = torch.load('../dataset/y_soft_gat.pt', map_location='cpu')
+        # node_feat = torch.cat([node_feat, y_soft_gat], dim=1)
 
         g.ndata["feat"] = node_feat.float()
         g.ndata["labels"] = labels

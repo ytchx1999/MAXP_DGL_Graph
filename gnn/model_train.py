@@ -224,9 +224,9 @@ def gpu_train(proc_id, n_gpus, GPUS,
         all_nid_per_gpu = np.concatenate((train_nid_per_gpu, val_nid_per_gpu, test_nid_per_gpu), axis=0)
     all_sampler = MultiLayerNeighborSampler(test_fanouts)
     graph_loader = NodeDataLoader(graph,
-                                  all_nid_per_gpu,
+                                  th.arange(graph.num_nodes()),  # all_nid_per_gpu,
                                   all_sampler,
-                                  batch_size=256,
+                                  batch_size=1024,
                                   shuffle=False,
                                   drop_last=False,
                                   num_workers=num_workers,
@@ -268,22 +268,22 @@ def gpu_train(proc_id, n_gpus, GPUS,
             model.node_encoder = th.nn.Linear(in_feat, hidden_dim)
             model.pred_linear = th.nn.Linear(4 * hidden_dim, n_classes)
         else:
-            # model = GraphAttnModel(in_feat, hidden_dim, n_layers, n_classes,
-            #                        heads=([4] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
-            model = GAT(
-                in_feat,
-                n_classes,
-                n_hidden=hidden_dim,
-                n_layers=n_layers,
-                n_heads=5,
-                activation=F.relu,
-                dropout=0.5,
-                input_drop=0.1,
-                attn_drop=0.0,
-                edge_drop=0.3,
-                use_attn_dst=False,
-                use_symmetric_norm=True,
-            )
+            model = GraphAttnModel(in_feat, hidden_dim, n_layers, n_classes,
+                                   heads=([5] * n_layers), activation=F.relu, feat_drop=0.2, attn_drop=0.1)
+            # model = GAT(
+            #     in_feat,
+            #     n_classes,
+            #     n_hidden=hidden_dim,
+            #     n_layers=n_layers,
+            #     n_heads=5,
+            #     activation=F.relu,
+            #     dropout=0.5,
+            #     input_drop=0.1,
+            #     attn_drop=0.0,
+            #     edge_drop=0.3,
+            #     use_attn_dst=False,
+            #     use_symmetric_norm=True,
+            # )
 
     else:
         raise NotImplementedError('So far, only support three algorithms: GraphSage, GraphConv, and GraphAttn')
@@ -470,7 +470,7 @@ def gpu_train(proc_id, n_gpus, GPUS,
         # x_all = th.cat(xs, dim=0)
         print(x_all.shape, flush=True)
         if args.gnn_model == 'graphattn':
-            th.save(x_all, '../dataset/y_soft.pt')
+            th.save(x_all, '../dataset/y_soft_gat.pt')
         elif args.gnn_model == 'graphsage':
             th.save(x_all, '../dataset/y_soft_sage.pt')
         elif args.gnn_model == 'graphconv':
@@ -511,17 +511,17 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--n_layers', type=int, default=3)
     parser.add_argument("--fanout", type=str, default='25,15,10')
-    parser.add_argument("--test_fanout", type=str, default='60,60,60')
+    parser.add_argument("--test_fanout", type=str, default='25,15,10')
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--GPU', nargs='+', type=int, default=0)
     parser.add_argument('--num_workers_per_gpu', type=int, default=4)
-    parser.add_argument('--epochs', type=int, default=15)
+    parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--out_path', type=str, default='../outputs')
     parser.add_argument('--step-size', type=float, default=1e-3)
     parser.add_argument('-m', type=int, default=3)
     parser.add_argument('--all_train', action="store_true")
     parser.add_argument('--use_label', action="store_true")
-    parser.add_argument('--use_emb', type=str, default='sgc')
+    parser.add_argument('--use_emb', type=str, default='node2vec')
     parser.add_argument('--save_emb', action="store_true")
     parser.add_argument('--flag', action="store_true")
     parser.add_argument('--pretrain', action="store_true")

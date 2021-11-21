@@ -68,8 +68,8 @@ def parse_arguments():
     parser.add_argument('--device', type=str, default='cpu')
     parser.add_argument('--embedding_dim', type=int, default=128)
     parser.add_argument('--walk_length', type=int, default=50)
-    parser.add_argument('--p', type=float, default=0.25)  # 0.25
-    parser.add_argument('--q', type=float, default=4)  # 4
+    parser.add_argument('--p', type=float, default=1)  # 0.25
+    parser.add_argument('--q', type=float, default=1)  # 4
     parser.add_argument('--num_walks', type=int, default=10)
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--batch_size', type=int, default=512)

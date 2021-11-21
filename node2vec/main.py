@@ -1,8 +1,10 @@
+from genericpath import exists
 import time
 from dgl.sampling import node2vec_random_walk
 from model import Node2vecModel
 from utils import load_graph, parse_arguments
 import torch
+import os
 
 
 def time_randomwalk(graph, args):

@@ -89,9 +89,10 @@ def run(args, device, seed):
 
         train_val = torch.cat([train_nid_new, val_nid_new], dim=0)
 
-        kf = KFold(n_splits=args.kfold, shuffle=True, random_state=seed)  # k fold split
+        kf = KFold(n_splits=args.kfold, shuffle=True, random_state=10086)  # k fold split
         train_vals = [i for i in kf.split(train_val)]
 
+        best_val_list = []
         # k fold cv
         for k, (train_idx, val_idx) in enumerate(train_vals):
             print('-'*50, flush=True)
@@ -169,7 +170,7 @@ def run(args, device, seed):
             loss_fcn = nn.CrossEntropyLoss()
             optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
                                          weight_decay=args.weight_decay)
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.2)  # lr adjustment
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)  # lr adjustment
 
             # Start training
             best_epoch = 0
@@ -183,6 +184,7 @@ def run(args, device, seed):
                 if stage == 0:
                     loss, acc = train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator, args)
                 elif stage == 1:
+                    # loss, acc = train(model, feats, labels, loss_fcn, optimizer, train_loader, label_emb, evaluator, args)
                     loss, acc = train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device, feats, labels, label_emb, predict_prob, args.gama)
                 else:
                     loss, acc = train_rlu(model, train_loader, enhance_loader, optimizer, evaluator, device, feats, labels, label_emb, predict_prob, args.gama)
@@ -220,7 +222,9 @@ def run(args, device, seed):
             print("Run: {}, Fold: {}, Best Epoch {}, Val {:.4f}, Test {:.4f}".format(
                 seed, k, best_epoch, best_val, best_test), flush=True)
 
-            model.load_state_dict(torch.load(checkpt_file+f'_{stage}.pkl'))
+            best_val_list.append(best_val)
+
+            model.load_state_dict(torch.load(checkpt_file+f'_{stage}.pkl'))  # best model load
             preds = gen_output_torch(model, feats, all_loader, labels.device, label_emb)
             torch.save(preds, checkpt_file+f'_{stage}.pt')
 
@@ -261,7 +265,7 @@ def run(args, device, seed):
 
     print("Done!", flush=True)
 
-    return best_val, best_test, preds
+    return best_val_list, best_test, preds
 
 
 def main(args):
@@ -275,18 +279,20 @@ def main(args):
     for i in range(args.num_runs):
         print(f"Run {i} start training", flush=True)
         set_seed(args.seed+i)
-        best_val, best_test, preds = run(args, device, args.seed+i)
+        best_val_list, best_test, preds = run(args, device, args.seed+i)
         # np.save(f"output/{args.dataset}/output_{i}.npy", preds.numpy())
         # torch.save(preds, f'../dataset/gamlp_{args.seed+i}.pt')
-        val_accs.append(best_val)
-        test_accs.append(best_test)
+        val_accs.append(best_val_list)
+        # test_accs.append(best_test)
 
-    print(f"Average val accuracy: {np.mean(val_accs):.4f}, "
-          f"std: {np.std(val_accs):.4f}", flush=True)
-    print(f"Average test accuracy: {np.mean(test_accs):.4f}, "
-          f"std: {np.std(test_accs):.4f}", flush=True)
+    for i, best_val in enumerate(val_accs):
+        print(f"Seed {i}: "
+              f"Average val accuracy: {np.mean(best_val):.4f}, "
+              f"std: {np.std(best_val):.4f}", flush=True)
+    # print(f"Average test accuracy: {np.mean(test_accs):.4f}, "
+    #       f"std: {np.std(test_accs):.4f}", flush=True)
 
-    return np.mean(test_accs)
+    return 0
 
 
 if __name__ == "__main__":

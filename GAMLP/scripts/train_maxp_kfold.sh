@@ -10,6 +10,7 @@ python3 ../main.py \
 --input-drop 0.1 \
 --att-drop 0.2 \
 --label-drop 0 \
+--weight-decay 0. \
 --pre-process \
 --residual \
 --dataset maxp \
@@ -24,7 +25,8 @@ python3 ../main.py \
 --num-hops 9 \
 --hidden 1024 \
 --temp 0.001 \
---num-runs 5 \
+--num-runs 3 \
+--kfold 8 \
 --act leaky_relu
 
 

@@ -29,10 +29,10 @@ def gen_model_mag_rlu(args, num_feats, in_feats, num_classes):
         return NARS_JK_GAMLP_RLU(in_feats, args.hidden, num_classes, args.num_hops+1, num_feats, args.alpha, args.n_layers_1, args.n_layers_2, args.n_layers_3, args.act, args.dropout, args.input_drop, args.att_drop, args.label_drop, args.pre_process, args.residual, args.pre_dropout, args.bns)
 
 
-def gen_model(args, in_size, num_classes):
+def gen_model(args, in_size, num_classes, fine_tune=None):
     if args.method == "R_GAMLP":
         return R_GAMLP(in_size, args.hidden, num_classes, args.num_hops+1,
-                       args.dropout, args.input_drop, args.att_drop, args.alpha, args.n_layers_1, args.n_layers_2, args.act, args.pre_process, args.residual, args.pre_dropout, args.bns)
+                       args.dropout, args.input_drop, args.att_drop, args.alpha, args.n_layers_1, args.n_layers_2, args.act, args.pre_process, args.residual, args.pre_dropout, args.bns, fine_tune)
     elif args.method == "JK_GAMLP":
         return JK_GAMLP(in_size, args.hidden, num_classes, args.num_hops+1,
                         args.dropout, args.input_drop, args.att_drop, args.alpha, args.n_layers_1, args.n_layers_2, args.act, args.pre_process, args.residual, args.pre_dropout, args.bns)

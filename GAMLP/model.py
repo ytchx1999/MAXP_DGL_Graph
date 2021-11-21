@@ -7,7 +7,7 @@ from layer import *
 
 class R_GAMLP(nn.Module):  # recursive GAMLP
     def __init__(self, nfeat, hidden, nclass, num_hops,
-                 dropout, input_drop, att_dropout, alpha, n_layers_1, n_layers_2, act="relu", pre_process=False, residual=False, pre_dropout=False, bns=False):
+                 dropout, input_drop, att_dropout, alpha, n_layers_1, n_layers_2, act="relu", pre_process=False, residual=False, pre_dropout=False, bns=False, fine_tune=None):
         super(R_GAMLP, self).__init__()
         self.num_hops = num_hops
         self.prelu = nn.PReLU()
@@ -35,6 +35,16 @@ class R_GAMLP(nn.Module):  # recursive GAMLP
         elif act == 'leaky_relu':
             self.act = torch.nn.LeakyReLU(0.2)
         self.reset_parameters()
+
+        if fine_tune != None:
+            for param in self.prelu.parameters():
+                param.requires_grad = False
+            for param in self.lr_att.parameters():
+                param.requires_grad = False
+            for param in self.process.parameters():
+                param.requires_grad = False
+            for param in self.res_fc.parameters():
+                param.requires_grad = False
 
     def reset_parameters(self):
         gain = nn.init.calculate_gain("relu")

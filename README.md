@@ -45,7 +45,7 @@ tqdm
 ```
 
 ## 环境安装
-依赖包见`requirement.txt`.
+<!-- 依赖包见`requirement.txt`. -->
 
 ```bash
 pip install -r requirement.txt
@@ -73,7 +73,8 @@ cd node2vec/
 nohup python main.py > ../outputs/node2vec.log 2>&1 &
 tail -f ../outputs/node2vec.log
 ```
-结果保存在`../dataset/emb.pt`中。
+结果保存在`../dataset/emb.pt`中， 下载链接[emb.pt](https://drive.google.com/u/0/uc?id=1gvJQBTbl8sIaJND_tBVA3Ua2TcU-4Kfy&export=download) (1.7GB)。
+
 
 ### 运行SGC并保存Embedding
 ```bash
@@ -148,7 +149,7 @@ python3 ensemble.py --all_train --gpu 1
 ```
 inference logits保存在`../dataset/gamlp_{seed}.pt`(all train)和`../dataset/gamlp_{k}fold_seed{seed}.pt`(kfold)中。
 <!-- All train的test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中，k-fold的 -->
-最终ensemble的test结果保存在`../outputs/submit_gamlp_emsem_xxxx-xx-xx.csv`中。
+最终ensemble的test结果保存在`../outputs/submit_gamlp_ensem_xxxx-xx-xx.csv`中。
 
 **模型融合 (所有模型先C&S)：**
 
@@ -159,6 +160,14 @@ K-fold cross-validation -- Soft Voting: (16 ensemble)
 | GAMLP (seed 0, fold 1) | 0.2 |
 | ... | ... |
 | GAMLP (seed 1, fold 7) | 0.2 |
+
+<!-- **CV Results**
+10 fold cv
+| model | Val acc (%) |
+|:-:|:-:|
+| GAMLP (seed 0, 10 fold) | 0.6044 ± 0.0012 |
+| GAMLP (seed 1, 10 fold) | 0.6047 ± 0.0015 | -->
+
 
 
 

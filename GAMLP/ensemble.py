@@ -199,10 +199,12 @@ def main():
     # test
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
         test_id_dict = pickle.load(f)
-    submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
-    # submit = pd.read_csv('../dataset/sample_submission_for_test.csv')
-    with open(os.path.join('../dataset/csv_idx_map.pkl'), 'rb') as f:
-        idx_map = pickle.load(f)
+    submit_val = pd.read_csv('../dataset/sample_submission_for_validation.csv')
+    submit_test = pd.read_csv('../dataset/sample_submission_for_test.csv')
+    with open(os.path.join('../dataset/csv_idx_map_val.pkl'), 'rb') as f:
+        idx_map_val = pickle.load(f)
+    with open(os.path.join('../dataset/csv_idx_map_test.pkl'), 'rb') as f:
+        idx_map_test = pickle.load(f)
     # save results
     test_pred_list = y_pred[test_nid]
     for i, id in tqdm(enumerate(test_nid)):
@@ -210,13 +212,17 @@ def main():
         label = chr(int(test_pred_list[i].item() + 65))
 
         # csv_index = submit[submit['id'] == paper_id].index.tolist()[0]
-        if paper_id in idx_map:
-            csv_index = idx_map[paper_id]
-            submit['label'][csv_index] = label
+        if paper_id in idx_map_val:
+            csv_index = idx_map_val[paper_id]
+            submit_val['label'][csv_index] = label
+        if paper_id in idx_map_test:
+            csv_index = idx_map_test[paper_id]
+            submit_test['label'][csv_index] = label
 
     if not os.path.exists('../outputs'):
         os.makedirs('../outputs', exist_ok=True)
-    submit.to_csv(os.path.join('../outputs/', f'submit_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+    submit_val.to_csv(os.path.join('../outputs/', f'submit_val_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+    submit_test.to_csv(os.path.join('../outputs/', f'submit_test_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
 
     print("Done!", flush=True)
 

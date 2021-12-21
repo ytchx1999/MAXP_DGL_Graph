@@ -210,10 +210,10 @@ def load_dataset(name, device, args):
         g = dgl.to_bidirected(g, copy_ndata=True)
         g = dgl.add_self_loop(g)
 
-        # 419 no feature nodes -- mean aggr of there neighbor
+        # 424 no feature nodes -- mean aggr of there neighbor
         node_feat_new = node_feat.clone()
-        diff_node_feat = torch.zeros((419, node_feat.shape[1]))
-        node_feat_new[-419:, :] = diff_node_feat
+        diff_node_feat = torch.zeros((424, node_feat.shape[1]))
+        node_feat_new[-424:, :] = diff_node_feat
 
         with g.local_scope():
             g.ndata['h'] = node_feat_new
@@ -221,17 +221,19 @@ def load_dataset(name, device, args):
                          fn.mean('m', 'h'))
             node_feat_new = g.ndata.pop('h')
 
-        node_feat[-419:, :] = node_feat_new[-419:, :].clone()
+        node_feat[-424:, :] = node_feat_new[-424:, :].clone()
         print("mean aggr done!", flush=True)
 
-        print("Use node2vec embedding...", flush=True)
-        emb = torch.load('../dataset/emb.pt', map_location='cpu')
-        emb.requires_grad = False
-        node_feat = torch.cat([node_feat, emb], dim=1)
+        # print("Use node2vec embedding...", flush=True)
+        # emb = torch.load('../dataset/emb.pt', map_location='cpu')
+        # emb.requires_grad = False
+        # node_feat = torch.cat([node_feat, emb], dim=1)
 
         # gat embedding
         # y_soft_gat = torch.load('../dataset/y_soft_gat.pt', map_location='cpu')
         # node_feat = torch.cat([node_feat, y_soft_gat], dim=1)
+
+        # node_feat = F.normalize(node_feat, p=2)
 
         g.ndata["feat"] = node_feat.float()
         g.ndata["labels"] = labels
@@ -289,6 +291,12 @@ def prepare_data(device, args, teacher_probs):
     g, labels, n_classes, train_nid, val_nid, test_nid, evaluator = data
     if args.dataset == 'ogbn-products' or args.dataset == 'maxp':
         feats = neighbor_average_features(g, args)
+
+        # print("Use node2vec embedding...", flush=True)
+        # emb = torch.load('../dataset/emb.pt', map_location='cpu')
+        # emb.requires_grad = False
+        # feats = [torch.cat([node_feat, emb], dim=1) for node_feat in feats]
+
         in_feats = feats[0].shape[1]
     elif args.dataset == 'ogbn-mag':
         rel_subsets = read_relation_subsets(args.use_relation_subsets)

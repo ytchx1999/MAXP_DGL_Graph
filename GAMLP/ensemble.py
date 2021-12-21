@@ -89,6 +89,8 @@ def main():
     idx = 0
     for seed in range(args.num_seed):
         for k in range(args.kfold):
+            if idx >= 20:
+                break
             if os.path.exists(f'../dataset/gamlp_{k}fold_seed{seed}.pt'):
                 y_kfold = torch.load(f'../dataset/gamlp_{k}fold_seed{seed}.pt', map_location='cpu')
                 y_soft_kfold.append(torch.zeros((labels.shape[0], y_kfold.shape[1])))
@@ -169,17 +171,20 @@ def main():
         val_acc_gamlp[i] = torch.sum(y_pred_gamlp[i][val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
         print(f'Valid acc: {val_acc_gamlp[i]:.4f}', flush=True)
 
+    print(f'ensemble {len(y_soft_kfold)} models.', flush=True)
     y_soft = 0
     w = [0.2] * len(y_soft_kfold)
     # w = [
-    #     0.1, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.5, 0.5, 0.1,
-    #     0.1, 0.1, 0.5, 0.1, 0.1, 0.5, 0.1, 0.1, 0.1, 0.1
+    #     0.5, 0.0, 0.0, 0.7, 0.0, 0.0, 0.0, 0.0,
+    #     0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, 0.5,
+    #     0.5, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0
     # ]
     for i in range(len(y_soft_kfold)):
         y_soft += (w[i] * y_soft_kfold[i])
 
     for i in range(len(y_soft_gamlp)):
-        y_soft += (w[i] * y_soft_gamlp[i])
+        if i != 0:
+            y_soft += (w[i] * y_soft_gamlp[i])
 
     y_soft = y_soft.softmax(dim=-1).to(device)
     # y_soft = cs.correct(graph, y_soft, labels[mask_idx], mask_idx)
@@ -188,10 +193,14 @@ def main():
     val_acc = torch.sum(y_pred[val_nid] == labels[val_nid]) / torch.tensor(labels[val_nid].shape[0])
     print(f'Pre valid acc: {val_acc:.4f}', flush=True)
 
+    torch.save(y_soft[tr_va_te_nid].cpu(), '../dataset/ensem_logits.pt')
+    print("save preds Done!", flush=True)
+
     # test
     with open(os.path.join('../dataset/test_id_dict.pkl'), 'rb') as f:
         test_id_dict = pickle.load(f)
     submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
+    # submit = pd.read_csv('../dataset/sample_submission_for_test.csv')
     with open(os.path.join('../dataset/csv_idx_map.pkl'), 'rb') as f:
         idx_map = pickle.load(f)
     # save results

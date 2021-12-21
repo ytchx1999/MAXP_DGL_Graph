@@ -2,9 +2,9 @@ cd "$(dirname $0)"
 
 python3 ../main.py \
 --seed 0 \
---gpu 0 \
+--gpu 1 \
 --method R_GAMLP \
---stages 151 \
+--stages 171 \
 --train-num-epochs 0 \
 --threshold 0.85 \
 --input-drop 0.1 \
@@ -23,7 +23,7 @@ python3 ../main.py \
 --gama 0.1 \
 --label-num-hops 9 \
 --num-hops 9 \
---hidden 1024 \
+--hidden 512 \
 --temp 0.001 \
 --num-runs 3 \
 --kfold 8 \

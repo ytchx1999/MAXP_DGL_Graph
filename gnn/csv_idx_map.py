@@ -3,6 +3,7 @@ from tqdm import tqdm
 import pickle
 
 submit = pd.read_csv('../dataset/sample_submission_for_validation.csv')
+# submit = pd.read_csv('../dataset/sample_submission_for_test.csv')
 print(len(submit))
 
 idx_map = {}

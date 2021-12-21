@@ -55,6 +55,8 @@ pip install -r requirement.txt
 
 [查看项目的整个目录树.](#Tree)
 
+平均 degree: 16.9152 (加上反向边和self-loop后)
+
 ### 运行jupyter进行数据预处理
 
 ```bash
@@ -161,12 +163,19 @@ K-fold cross-validation -- Soft Voting: (16 ensemble)
 | ... | ... |
 | GAMLP (seed 1, fold 7) | 0.2 |
 
-<!-- **CV Results**
-10 fold cv
+**CV Results**
+8 fold cv (0-7), 3 seeds (0-2).
 | model | Val acc (%) |
 |:-:|:-:|
-| GAMLP (seed 0, 10 fold) | 0.6044 ± 0.0012 |
-| GAMLP (seed 1, 10 fold) | 0.6047 ± 0.0015 | -->
+| GAMLP (seed 0, 8 fold) | 0.6062 ± 0.0014 |
+| GAMLP (seed 1, 8 fold) | 0.6063 ± 0.0012 |
+| GAMLP (seed 2, 8 fold) | 0.6061 ± 0.0013 |
+
+| seed | Val Acc (%) |
+|:-:|:-:|
+| 0 | **0.6076**, 0.6036, 0.6060, **0.6088**, 0.6060, 0.6061, 0.6059, 0.6055 |
+| 1 | 0.6066, 0.6036, **0.6066**, **0.6068**, **0.6076**, **0.6068**, 0.6055, **0.6069** |
+| 2 | **0.6076**, 0.6033, **0.6066**, **0.6075**, 0.6057, 0.6066, 0.6058, 0.6058 |
 
 
 

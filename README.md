@@ -147,7 +147,7 @@ nohup bash train_maxp_all.sh > ../output/gamlp1.log 2>&1 &
 
 # post process + ensemble (model merge and c&s)
 cd GAMLP/
-python3 ensemble.py --all_train --gpu 1 
+nohup python3 ensemble.py --all_train --gpu 0 > ./output/ensem.log 2>&1 &
 ```
 inference logits保存在`../dataset/gamlp_{seed}.pt`(all train)和`../dataset/gamlp_{k}fold_seed{seed}.pt`(kfold)中。
 <!-- All train的test结果保存在`../outputs/submit_gamlp_cs_xxxx-xx-xx.csv`中，k-fold的 -->

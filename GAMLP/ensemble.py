@@ -221,8 +221,8 @@ def main():
 
     if not os.path.exists('../outputs'):
         os.makedirs('../outputs', exist_ok=True)
-    submit_val.to_csv(os.path.join('../outputs/', f'submit_val_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
-    submit_test.to_csv(os.path.join('../outputs/', f'submit_test_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}.csv'), index=False)
+    submit_val.to_csv(os.path.join('../outputs/', f'submit_val_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}_n2v.csv'), index=False)
+    submit_test.to_csv(os.path.join('../outputs/', f'submit_test_gamlp_ensem_{time.strftime("%Y-%m-%d", time.localtime())}_n2v.csv'), index=False)
 
     print("Done!", flush=True)
 

@@ -232,7 +232,7 @@ def run(args, device, seed):
                 torch.save(preds, f'../dataset/gamlp_{seed}.pt')
                 break
             else:
-                torch.save(preds, f'../dataset/gamlp_{k}fold_seed{seed}.pt')
+                torch.save(preds, f'../dataset/gamlp_{k}fold_seed{seed}_n2v.pt')  # n2v
 
     # torch.save(preds, f'../dataset/gamlp_{args.seed+num_run}.pt')
 

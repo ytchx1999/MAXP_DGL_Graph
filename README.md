@@ -1,9 +1,90 @@
 # MAXP-DGL-Graph-Machine-Learning-Challenge
 [ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: *Graph@ICT* ]
 
-## Test提交结果
+## 依赖包：
 
-最近结果比较好的方法。
+```bash
+dgl-cu102==0.7.2
+pytorch==1.7.0
+sklearn
+pandas
+numpy
+datetime
+tqdm
+...
+```
+
+## 环境安装
+<!-- 依赖包见`requirement.txt`. -->
+
+```bash
+pip install -r requirement.txt
+```
+
+## 关键路径
+```bash
+.
+|--dataset
+|--outputs
+|--GAMLP
+|  |--scripts
+|  |--output
+|--gnn
+|--node2vec
+```
+
+
+## 运行 Final Test 
+### 0、准备工作和数据路径
+```bash
+cd MAXP_DGL_Graph/
+mkdir dataset  # 存放所有数据集
+mkdir outputs  # 存放输出结果
+```
+### 1、 运行jupyter进行数据预处理
+```python
+# 生成feature和DGL graph
+process-1.ipynb
+process-2.ipynb
+process-3.ipynb
+process-4.ipynb
+# 根据test nodes构造sample_submission_for_test.csv
+gen_test_submitcsv.ipynb
+```
+
+### 2、构造必要的id--index映射关系
+```bash
+cd gnn/
+python3 csv_idx_map.py
+```
+
+### 3、运行node2vec得到所有节点的embedding
+```bash
+cd node2vec/
+nohup python main.py > ../outputs/node2vec.log 2>&1 &  
+```
+
+### 4、训练node2vec特征增强的GAMLP (8-fold)
+```bash
+cd GAMLP/scripts/
+nohup bash train_maxp_all.sh > ../output/gamlp.log 2>&1 &
+```
+
+### 5、C&S和模型融合
+```bash
+cd GAMLP/
+nohup python3 ensemble.py --all_train --gpu 1 > ./output/ensem.log 2>&1 &
+```
+
+### 6、下载submit文件
+最终test：`./outputs/sample_submission_for_test.csv`
+最终valid：`./outputs/sample_submission_for_validation.csv`
+
+----
+
+## Valid提交结果
+
+a榜（Valid）结果记录。a榜最终成绩为14。
 
 |Date  | Method | Score |
 |:-:|:-:|:-:|
@@ -25,33 +106,15 @@
 | 2021-10-13 | GraphSAGE   +一些tricks | 48.48 |
 | 2021-10-13 | GraphSAGE（baseline） | 48.14 |
 
-## 代码库包括2个部分：
+<!-- ## 代码库包括2个部分：
 
 
 1. 用于数据预处理的4个Jupyter Notebook
-2. 用DGL构建的3个GNN模型(GCN,GraphSage和GAT)，以及训练模型所用的代码和辅助函数。
+2. 用DGL构建的3个GNN模型(GCN,GraphSage和GAT)，以及训练模型所用的代码和辅助函数。 -->
 
-## 依赖包：
 
-```bash
-dgl==0.7.1
-pytorch==1.7.0
-sklearn
-pandas
-numpy
-datetime
-tqdm
-...
-```
 
-## 环境安装
-<!-- 依赖包见`requirement.txt`. -->
-
-```bash
-pip install -r requirement.txt
-```
-
-## 如何运行：
+## 全部探索如下：
 
 [查看项目的整个目录树.](#Tree)
 

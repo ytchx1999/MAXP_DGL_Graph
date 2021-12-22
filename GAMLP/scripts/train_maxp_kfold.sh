@@ -2,9 +2,9 @@ cd "$(dirname $0)"
 
 python3 ../main.py \
 --seed 0 \
---gpu 1 \
+--gpu 0 \
 --method R_GAMLP \
---stages 171 \
+--stages 151 \
 --train-num-epochs 0 \
 --threshold 0.85 \
 --input-drop 0.1 \

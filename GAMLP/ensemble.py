@@ -91,8 +91,8 @@ def main():
         for k in range(args.kfold):
             if idx >= 20:
                 break
-            if os.path.exists(f'../dataset/gamlp_{k}fold_seed{seed}.pt'):
-                y_kfold = torch.load(f'../dataset/gamlp_{k}fold_seed{seed}.pt', map_location='cpu')
+            if os.path.exists(f'../dataset/gamlp_{k}fold_seed{seed}_n2v.pt'):  # n2v
+                y_kfold = torch.load(f'../dataset/gamlp_{k}fold_seed{seed}_n2v.pt', map_location='cpu')
                 y_soft_kfold.append(torch.zeros((labels.shape[0], y_kfold.shape[1])))
                 y_soft_kfold[idx][tr_va_te_nid] = y_kfold
                 idx += 1

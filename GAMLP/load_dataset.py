@@ -224,10 +224,10 @@ def load_dataset(name, device, args):
         node_feat[-424:, :] = node_feat_new[-424:, :].clone()
         print("mean aggr done!", flush=True)
 
-        # print("Use node2vec embedding...", flush=True)
-        # emb = torch.load('../dataset/emb.pt', map_location='cpu')
-        # emb.requires_grad = False
-        # node_feat = torch.cat([node_feat, emb], dim=1)
+        print("Use node2vec embedding...", flush=True)
+        emb = torch.load('../dataset/node2vec_emb.pt', map_location='cpu')  # emb.pt
+        emb.requires_grad = False
+        node_feat = torch.cat([node_feat, emb], dim=1)
 
         # gat embedding
         # y_soft_gat = torch.load('../dataset/y_soft_gat.pt', map_location='cpu')

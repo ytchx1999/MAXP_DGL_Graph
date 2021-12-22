@@ -67,7 +67,7 @@ nohup python main.py > ../outputs/node2vec.log 2>&1 &
 ### 4、训练node2vec特征增强的GAMLP (8-fold)
 ```bash
 cd GAMLP/scripts/
-nohup bash train_maxp_all.sh > ../output/gamlp.log 2>&1 &
+nohup bash train_maxp_kfold.sh > ../output/gamlp.log 2>&1 &
 ```
 
 ### 5、C&S和模型融合
@@ -78,6 +78,7 @@ nohup python3 ensemble.py --all_train --gpu 1 > ./output/ensem.log 2>&1 &
 
 ### 6、下载submit文件
 最终test：`./outputs/sample_submission_for_test.csv`
+
 最终valid：`./outputs/sample_submission_for_validation.csv`
 
 ----

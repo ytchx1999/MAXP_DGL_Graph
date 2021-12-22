@@ -77,9 +77,9 @@ nohup python3 ensemble.py --all_train --gpu 1 > ./output/ensem.log 2>&1 &
 ```
 
 ### 6、下载submit文件
-最终test：`./outputs/sample_submission_for_test.csv`
+最终test：`./outputs/submit_test_gamlp_ensem_xxxx-xx-xx.csv`
 
-最终valid：`./outputs/sample_submission_for_validation.csv`
+最终valid：`./outputs/submit_val_gamlp_ensem_xxxx-xx-xx.csv`
 
 ----
 

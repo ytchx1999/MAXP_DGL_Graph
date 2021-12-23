@@ -207,7 +207,7 @@ def run(args, device, seed):
                         else:
                             best_test = test(model, feats, labels, test_loader, evaluator,
                                              label_emb)
-                        torch.save(model.state_dict(), checkpt_file+f'_{stage}.pkl')
+                        torch.save(model.state_dict(), checkpt_file+f'_{stage}_{k}.pkl')
                         count = 0
                     else:
                         count = count+args.eval_every
@@ -224,7 +224,7 @@ def run(args, device, seed):
 
             best_val_list.append(best_val)
 
-            model.load_state_dict(torch.load(checkpt_file+f'_{stage}.pkl'))  # best model load
+            model.load_state_dict(torch.load(checkpt_file+f'_{stage}_{k}.pkl'))  # best model load
             preds = gen_output_torch(model, feats, all_loader, labels.device, label_emb)
             torch.save(preds, checkpt_file+f'_{stage}.pt')
 

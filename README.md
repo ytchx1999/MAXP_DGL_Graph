@@ -30,6 +30,9 @@ tqdm
 pip install -r requirement.txt
 ```
 
+## GPU
++ Tesla V100 (32GB)
+
 ## 关键路径
 ```bash
 .
@@ -44,6 +47,9 @@ pip install -r requirement.txt
 
 
 ## 运行 Final Test 
+
+**为了完整复现，我们建议从头进行端到端的训练（Scalable GNN训练的很快）**
+
 ### 0、准备工作和数据路径
 ```bash
 cd MAXP_DGL_Graph/
@@ -96,8 +102,8 @@ nohup python3 ensemble.py --all_train --gpu 1 > ./output/ensem.log 2>&1 &
 | Method | Score |
 |:-:|:-:|
 | GAMLP (leaky-relu, 9 hops, 8-fold) + node2vec + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0-2}) | 49.7822086481499 |
-GAMLP (leaky-relu, 9 hops, 8-fold) + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0-2}) | 49.7923833548815 |
-GAMLP (leaky-relu, 9 hops, 8-fold) + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0}) | 49.7767704428278 |  
+| GAMLP (leaky-relu, 9 hops, 8-fold) + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0-2}) | 49.7923833548815 |
+| GAMLP (leaky-relu, 9 hops, 8-fold) + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0}) | 49.7767704428278 |  
 
 ----
 

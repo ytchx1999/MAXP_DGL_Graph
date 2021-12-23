@@ -1,5 +1,14 @@
 # MAXP-DGL-Graph-Machine-Learning-Challenge
+
+![title](./title.png)
+
 [ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: *Graph@ICT* ]
+
+[2021-MAXP-DGL图机器学习大赛解决方案-Graph@ICT.pdf](./2021-MAXP-DGL图机器学习大赛解决方案-Graph@ICT.pdf)
+
+最终Test成绩（b榜）：rank8
+
+![res](./result.png)
 
 ## 依赖包：
 
@@ -59,18 +68,21 @@ python3 csv_idx_map.py
 ```
 
 ### 3、运行node2vec得到所有节点的embedding
+大约需要12h。
 ```bash
 cd node2vec/
 nohup python main.py > ../outputs/node2vec.log 2>&1 &  
 ```
 
 ### 4、训练node2vec特征增强的GAMLP (8-fold)
+大约需要16h。
 ```bash
 cd GAMLP/scripts/
 nohup bash train_maxp_kfold.sh > ../output/gamlp.log 2>&1 &
 ```
 
 ### 5、C&S和模型融合
+大约需要2h。
 ```bash
 cd GAMLP/
 nohup python3 ensemble.py --all_train --gpu 1 > ./output/ensem.log 2>&1 &
@@ -80,6 +92,12 @@ nohup python3 ensemble.py --all_train --gpu 1 > ./output/ensem.log 2>&1 &
 最终test：`./outputs/submit_test_gamlp_ensem_xxxx-xx-xx_n2v.csv`
 
 最终valid：`./outputs/submit_val_gamlp_ensem_xxxx-xx-xx_n2v.csv`
+
+| Method | Score |
+|:-:|:-:|
+| GAMLP (leaky-relu, 9 hops, 8-fold) + node2vec + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0-2}) | 49.7822086481499 |
+GAMLP (leaky-relu, 9 hops, 8-fold) + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0-2}) | 49.7923833548815 |
+GAMLP (leaky-relu, 9 hops, 8-fold) + C&S (DAD, AD) + Model Merge (+GAMLP_8fold_seed_{0}) | 49.7767704428278 |  
 
 ----
 

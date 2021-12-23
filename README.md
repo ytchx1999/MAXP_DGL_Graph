@@ -6,7 +6,7 @@
 
 [2021-MAXP-DGL图机器学习大赛解决方案-Graph@ICT.pdf](./2021-MAXP-DGL图机器学习大赛解决方案-Graph@ICT.pdf)
 
-最终Test成绩（b榜）：rank8
+最终Test成绩（b榜）：rank8，有任何问题请联系 chihuixuan21@mails.ucas.ac.cn
 
 ![res](./result.png)
 
@@ -74,25 +74,35 @@ python3 csv_idx_map.py
 ```
 
 ### 3、运行node2vec得到所有节点的embedding
-大约需要12h。
 ```bash
 cd node2vec/
 nohup python main.py > ../outputs/node2vec.log 2>&1 &  
 ```
+大约需要12h。
+
+也可以直接下载`node2vec_emb.zip`，放到`./dataset`中并解压。链接: [https://pan.baidu.com/s/1Kg3bLPJ6q8yUNjiPtQUBtA](https://pan.baidu.com/s/1Kg3bLPJ6q8yUNjiPtQUBtA)  密码: dvuw
+
 
 ### 4、训练node2vec特征增强的GAMLP (8-fold)
-大约需要16h。
+
 ```bash
 cd GAMLP/scripts/
 nohup bash train_maxp_kfold.sh > ../output/gamlp.log 2>&1 &
 ```
+大约需要16h。
+
+也可以直接下载`gamlp_ckpt.zip`，放到`./dataset`中并解压，**解压后可以不跑第4步以及之前的代码，直接运行第5步**。链接: [https://pan.baidu.com/s/1Q3v0Hlwqu8qI9-SCNBjt4A](https://pan.baidu.com/s/1Q3v0Hlwqu8qI9-SCNBjt4A)  密码: tn8h
+
+每一折的best model模型文件可以从此处下载。
 
 ### 5、C&S和模型融合
-大约需要2h。
 ```bash
 cd GAMLP/
 nohup python3 ensemble.py --all_train --gpu 1 > ./output/ensem.log 2>&1 &
 ```
+大约需要2h。
+
+
 
 ### 6、下载submit文件
 最终test：`./outputs/submit_test_gamlp_ensem_xxxx-xx-xx_n2v.csv`

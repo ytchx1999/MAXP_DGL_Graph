@@ -93,7 +93,7 @@ nohup bash train_maxp_kfold.sh > ../output/gamlp.log 2>&1 &
 
 也可以直接下载`gamlp_ckpt.zip`，放到`./dataset`中并解压，**解压后可以不跑第4步以及之前的代码，直接运行第5步**。链接: [https://pan.baidu.com/s/1Q3v0Hlwqu8qI9-SCNBjt4A](https://pan.baidu.com/s/1Q3v0Hlwqu8qI9-SCNBjt4A)  密码: tn8h
 
-每一折的best model模型文件可以从此处下载。
+每一折的best model模型文件`model.zip`可以从此处下载，解压后放到`./GAMLP/output/maxp`中。链接: [https://pan.baidu.com/s/1JfYz0oUcVexxMoCZzsTqXQ](https://pan.baidu.com/s/1JfYz0oUcVexxMoCZzsTqXQ)  密码: 6e5b
 
 ### 5、C&S和模型融合
 ```bash

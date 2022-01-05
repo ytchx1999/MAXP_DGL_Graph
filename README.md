@@ -4,7 +4,7 @@
 
 [ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: *Graph@ICT* ]
 
-[2021-MAXP-DGL图机器学习大赛解决方案-Graph@ICT.pdf](./2021-MAXP-DGL图机器学习大赛解决方案-Graph@ICT.pdf)
+[2021-MAXP-DGL图机器学习大赛解决方案-8-Graph@ICT.pdf](./2021-MAXP-DGL图机器学习大赛解决方案-8-Graph@ICT.pdf)
 
 最终Test成绩（b榜）：rank8，有任何问题请联系 chihuixuan21@mails.ucas.ac.cn
 

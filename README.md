@@ -10,6 +10,8 @@
 
 有任何问题请联系 chihuixuan21@mails.ucas.ac.cn.
 
+P.S. [一位大佬整理的前排解决方案](https://github.com/CYBruce/MAXP-DGL-solutions)。
+
 <!-- ![res](./result.png) -->
 
 ## 依赖包：

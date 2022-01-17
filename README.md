@@ -6,9 +6,11 @@
 
 [2021-MAXP-DGL图机器学习大赛解决方案-8-Graph@ICT.pdf](./2021-MAXP-DGL图机器学习大赛解决方案-8-Graph@ICT.pdf)
 
-最终Test成绩（b榜）：rank8，有任何问题请联系 chihuixuan21@mails.ucas.ac.cn
+最终Test成绩（b榜）：rank6🥉，[[获奖名单](https://www.biendata.xyz/competition/maxp_dgl/winners/)] | [[答辩视频](https://www.bilibili.com/video/BV1fr4y1v737?p=2)]。
 
-![res](./result.png)
+有任何问题请联系 chihuixuan21@mails.ucas.ac.cn.
+
+<!-- ![res](./result.png) -->
 
 ## 依赖包：
 

@@ -1,6 +1,5 @@
 # MAXP-DGL-Graph-Machine-Learning-Challenge
 
-
 ![title](./title.png)
 
 [ 2021 MAXP 命题赛 任务一：[基于DGL的图机器学习任务 ](https://www.biendata.xyz/competition/maxp_dgl/) ] | [ Team: *Graph@ICT* ]
